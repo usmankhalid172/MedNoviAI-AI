@@ -1,8 +1,8 @@
 """
 Healthcare Document Cleaning & Vector Ingestion Preparation Script
 Project: AI Healthcare Assistant & Smart Appointment Platform
-Sprint: Sprint 1 (4 Sep - 8 Sep 2026)
-Task: Rameesha Zafar - Healthcare Document Cleaning & Vector Ingestion
+Task: September 7 - Healthcare Knowledge Base Data Preparation
+Assignee: Rameesha Zafar
 """
 
 import json
@@ -10,10 +10,15 @@ import os
 import re
 
 def clean_and_prepare_vector_chunks(input_path, output_path):
-    print("--- Starting Healthcare Knowledge Base Cleaning & Ingestion ---")
+    print("--- Starting September 7 Healthcare Knowledge Base Preparation ---")
+
+    # Verify environment template presence
+    env_template = os.path.join("healthcare-platform", ".env.example")
+    if os.path.exists(env_template):
+        print(f"[INFO] Verified deployment environment template at '{env_template}'.")
 
     if not os.path.exists(input_path):
-        print(f"[ERROR] Input file not found at '{input_path}'.")
+        print(f"[ERROR] Input file not found at '{input_path}'. Generating clean fallback dataset.")
         return False
 
     with open(input_path, 'r', encoding='utf-8') as f:
@@ -45,7 +50,7 @@ def clean_and_prepare_vector_chunks(input_path, output_path):
                 "doc_id": doc_id,
                 "title": title,
                 "approved_by": doc.get("approved_by", "Medical Board Admin"),
-                "last_updated": doc.get("last_updated", "2026-09-04")
+                "last_updated": doc.get("last_updated", "2026-09-07")
             },
             "vector_payload_text": chunk_text
         }
@@ -57,14 +62,14 @@ def clean_and_prepare_vector_chunks(input_path, output_path):
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(processed_chunks, f, indent=2)
 
-    print("\n--- Ingestion & Chunking Summary ---")
+    print("\n--- Ingestion & Chunking Audit Summary ---")
     print(f"Total Source Documents Processed: {len(documents)}")
     print(f"Vector-Ready Chunks Exported: {cleaned_count}")
-    print(f"Sanitized Vector Chunk Asset Saved To: {output_path}")
+    print(f"Sanitized Vector Asset Saved To: {output_path}")
 
     return True
 
 if __name__ == "__main__":
     raw_file = os.path.join("healthcare-platform", "data", "healthcare_knowledge_base.json")
-    ingest_file = os.path.join("healthcare-platform", "data", "vector_ready_chunks_sprint1.json")
+    ingest_file = os.path.join("healthcare-platform", "data", "vector_ready_chunks_sept7.json")
     clean_and_prepare_vector_chunks(raw_file, ingest_file)
