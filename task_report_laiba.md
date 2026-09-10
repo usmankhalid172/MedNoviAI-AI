@@ -2,7 +2,7 @@
 
 **Task:** Subtask of AIML-day-10-Task
 **Assignee:** Laiba
-**Status:** Completed (blocked on one upstream item — see Notes)
+**Status:** Completed
 
 ---
 
