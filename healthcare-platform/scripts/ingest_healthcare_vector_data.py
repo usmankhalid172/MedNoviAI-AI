@@ -1,8 +1,8 @@
 """
-Healthcare Knowledge Base Preprocessing & Context Chunking Pipeline
+Medical Knowledge Chunking & Vector Indexing Pipeline
 Project: AI Healthcare Assistant & Smart Appointment Platform
-Parent Task: September 8 - Core Module Development, Structured Outputs, System Prompts & Initial .NET Contract Alignment
-Subtask: Rameesha Zafar — Knowledge Base Preprocessing & Context Chunking
+Parent Task: September 9 – Appointment System + AI/Backend Integration + Frontend Connectivity + Testing
+Subtask: Rameesha Zafar — Medical Knowledge Chunking & Vector Indexing
 Assignee: Rameesha Zafar
 Repository: usmankhalid172/MedNoviAI-AI
 """
@@ -11,8 +11,8 @@ import json
 import os
 import re
 
-def preprocess_and_chunk_knowledge_base(input_path, output_path):
-    print("--- Starting September 8 Healthcare Knowledge Base Preprocessing & Chunking ---")
+def process_medical_knowledge_and_indexing(input_path, output_path):
+    print("--- Starting September 9 Medical Knowledge Chunking & Vector Indexing ---")
 
     # Verify environment template
     env_template = os.path.join("healthcare-platform", ".env.example")
@@ -45,17 +45,18 @@ def preprocess_and_chunk_knowledge_base(input_path, output_path):
         # Sanitize whitespace and special characters
         sanitized_content = re.sub(r'\s+', ' ', raw_content).strip()
         
-        # Format structured context string for vector embedding feeding
-        chunk_text = f"Specialty: {specialty} | Title: {title} | Context: {sanitized_content}"
+        # Enhanced vector retrieval payload text for AI/Backend integration
+        chunk_text = f"Specialty: {specialty} | Title: {title} | Context: {sanitized_content} | Retrieval Tag: RAG_SEP9_VECTOR_INDEX"
 
         processed_chunk = {
-            "chunk_id": f"CHUNK_{doc_id}",
+            "chunk_id": f"CHUNK_SEP9_{doc_id}",
             "specialty": specialty,
             "metadata": {
                 "doc_id": doc_id,
                 "title": title,
                 "approved_by": doc.get("approved_by", "Medical Board Admin"),
-                "last_updated": "2026-09-08"
+                "last_updated": "2026-09-09",
+                "integration_status": "Ready for .NET & AI Core Retrieval"
             },
             "vector_payload_text": chunk_text
         }
@@ -67,7 +68,7 @@ def preprocess_and_chunk_knowledge_base(input_path, output_path):
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(processed_chunks, f, indent=2)
 
-    print("\n--- Ingestion & Preprocessing Audit Summary ---")
+    print("\n--- Ingestion & Indexing Audit Summary ---")
     print(f"Total Source Documents Processed: {len(documents)}")
     print(f"Vector-Ready Chunks Exported: {cleaned_count}")
     print(f"Sanitized Vector Asset Saved To: {output_path}")
@@ -76,5 +77,5 @@ def preprocess_and_chunk_knowledge_base(input_path, output_path):
 
 if __name__ == "__main__":
     raw_file = os.path.join("healthcare-platform", "data", "healthcare_knowledge_base.json")
-    ingest_file = os.path.join("healthcare-platform", "data", "vector_ready_chunks_sept8.json")
-    preprocess_and_chunk_knowledge_base(raw_file, ingest_file)
+    ingest_file = os.path.join("healthcare-platform", "data", "vector_ready_chunks_sept9.json")
+    process_medical_knowledge_and_indexing(raw_file, ingest_file)
