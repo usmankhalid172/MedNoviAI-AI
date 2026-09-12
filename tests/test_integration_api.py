@@ -3,6 +3,17 @@ Integration-style test: exercises the full request path (middleware ->
 routing -> Pydantic validation -> service layer -> response) through a live
 FastAPI TestClient, rather than calling service functions directly.
 """
+from fastapi.testclient import TestClient
+
+
+def test_favicon_route_returns_empty_204_response():
+    from main import app as root_app
+
+    client = TestClient(root_app)
+    resp = client.get("/favicon.ico")
+
+    assert resp.status_code == 204
+    assert resp.content == b""
 
 
 def test_error_format_is_consistent_on_validation_failure(client, auth_headers):
@@ -52,3 +63,21 @@ def test_full_flow_chatbot_then_categorize(client, auth_headers):
     )
     assert cat_resp.status_code == 200
     assert cat_resp.json()["category"] == "Dining"
+
+
+def test_spending_pattern_intelligence_route_returns_verified_summary(client, auth_headers):
+    resp = client.get(
+        "/api/v1/spending-pattern-intelligence/U4637",
+        headers=auth_headers,
+    )
+
+    assert resp.status_code == 200
+    payload = resp.json()
+
+    assert payload["user_id"] == "U4637"
+    assert payload["total_expenses"] >= 0
+    assert payload["income_total"] >= 0
+    assert "category_breakdown" in payload
+    assert "category_percentages" in payload
+    assert "period_summary" in payload
+    assert payload["period_summary"]["has_transactions"] is True
