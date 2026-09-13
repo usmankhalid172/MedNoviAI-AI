@@ -231,11 +231,22 @@ def calculate_financial_health_score(data: FinancialData) -> dict:
         return {
             "score": 0,
             "status": "Poor",
+            "income": 0,
+            "expenses": 0,
             "savingRate": 0,
             "expenseRatio": 0,
+            "budgetUtilization": None,
             "budgetStatus": "No Data",
             "cashFlow": 0,
             "expenseGrowth": None,
+            "factorScores": {
+                "savingBehavior": 0,
+                "expenseControl": 0,
+                "budgetControl": 0,
+                "cashFlow": 0,
+                "debtUdhaar": 0,
+                "expenseGrowth": 0,
+            },
             "insights": ["No transaction data available for this period"],
         }
 
@@ -275,14 +286,27 @@ def calculate_financial_health_score(data: FinancialData) -> dict:
         saving_rate, expense_ratio, budget_status, cash_flow_status, growth_pct
     )
 
+    factor_scores = {
+        "savingBehavior": round(saving_score, 2),
+        "expenseControl": round(expense_score, 2),
+        "budgetControl": round(budget_score, 2) if budget_score is not None else None,
+        "cashFlow": round(cash_score, 2),
+        "debtUdhaar": round(debt_score, 2),
+        "expenseGrowth": round(growth_score, 2) if growth_score is not None else None,
+    }
+
     return {
         "score": final_score,
         "status": status,
+        "income": round(data.total_income, 2),
+        "expenses": round(data.total_expense, 2),
         "savingRate": round(saving_rate, 2),
         "expenseRatio": round(expense_ratio, 2),
+        "budgetUtilization": round(budget_util, 2) if budget_util is not None else None,
         "budgetStatus": budget_status,
         "cashFlow": round(cash_flow_amount, 2),
         "expenseGrowth": round(growth_pct, 2) if growth_pct is not None else None,
+        "factorScores": factor_scores,
         "insights": insights,
     }
 
