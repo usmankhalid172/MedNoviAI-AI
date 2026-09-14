@@ -1,3 +1,4 @@
+from src.doctor_information.context import DoctorConversationContext
 from src.doctor_information.intents import (
     DoctorInformationIntent,
     detect_intent,
@@ -103,3 +104,101 @@ def test_response_rejects_unexpected_fields():
         assert False
     except Exception:
         assert True
+
+
+def test_context_stores_active_doctor_after_profile_lookup():
+    doctor = DoctorProfile(
+        doctor_id="DOC-001",
+        doctor_name="Dr. Ahmed",
+        specialty="Cardiology",
+    )
+    context = DoctorConversationContext()
+
+    DoctorInformationService().process(
+        "Tell me about Dr. Ahmed's profile",
+        doctor=doctor,
+        context=context,
+    )
+
+    assert context.active_doctor == "Dr. Ahmed"
+    assert context.active_doctor_id == "DOC-001"
+    assert context.last_intent == "profile"
+
+
+def test_context_stores_active_doctor_after_schedule_lookup():
+    schedule = DoctorSchedule(
+        doctor_id="DOC-001",
+        doctor_name="Dr. Ahmed",
+        schedule={"Monday": ["10:00 AM"]},
+    )
+    context = DoctorConversationContext()
+
+    DoctorInformationService().process(
+        "When is Dr. Ahmed available?",
+        schedule=schedule,
+        context=context,
+    )
+
+    assert context.active_doctor == "Dr. Ahmed"
+    assert context.active_doctor_id == "DOC-001"
+    assert context.last_intent == "schedule"
+
+
+def test_unknown_follow_up_uses_active_context():
+    context = DoctorConversationContext(
+        active_doctor="Dr. Ahmed",
+        active_doctor_id="DOC-001",
+        last_intent="profile",
+    )
+
+    result = DoctorInformationService().process(
+        "What else can you tell me?",
+        context=context,
+    )
+
+    assert result.information_available is False
+    assert result.requested_information == "unknown"
+    assert "Dr. Ahmed" in result.message
+
+
+def test_unknown_query_without_context_asks_for_clarification():
+    context = DoctorConversationContext()
+
+    result = DoctorInformationService().process(
+        "What else can you tell me?",
+        context=context,
+    )
+
+    assert result.information_available is False
+    assert "profile or schedule" in result.message
+
+
+def test_context_switches_to_new_doctor():
+    first_doctor = DoctorProfile(
+        doctor_id="DOC-001",
+        doctor_name="Dr. Ahmed",
+        specialty="Cardiology",
+    )
+    second_doctor = DoctorProfile(
+        doctor_id="DOC-002",
+        doctor_name="Dr. Sara",
+        specialty="ENT",
+    )
+    context = DoctorConversationContext()
+
+    service = DoctorInformationService()
+
+    service.process(
+        "Tell me about Dr. Ahmed's profile",
+        doctor=first_doctor,
+        context=context,
+    )
+
+    service.process(
+        "Tell me about Dr. Sara's profile",
+        doctor=second_doctor,
+        context=context,
+    )
+
+    assert context.active_doctor == "Dr. Sara"
+    assert context.active_doctor_id == "DOC-002"
