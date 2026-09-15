@@ -1,0 +1,26 @@
+[
+  {
+    "input": "I have fever and cough for 3 days.",
+    "expected_symptoms": [
+      "fever",
+      "cough"
+    ],
+    "expected_duration": "3 days",
+    "expected_emergency": false
+  },
+  {
+    "input": "I have severe chest pain and difficulty breathing.",
+    "expected_symptoms": [
+      "chest pain",
+      "difficulty breathing"
+    ],
+    "expected_duration": null,
+    "expected_emergency": true
+  },
+  {
+    "input": "I don't feel well.",
+    "expected_symptoms": [],
+    "expected_duration": null,
+    "expected_emergency": false
+  }
+]
