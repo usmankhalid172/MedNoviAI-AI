@@ -1,111 +1,55 @@
-# Sprint 1 – Final Prompt Structure & AI Safety Guardrails
+# Sprint 1 – AI Safety & Guardrails
 
 **Assignee:** Zainab Raza  
-**Role:** AI Safety Engineer  
+**Role:** AI Safety & Guardrails Engineer  
 **Branch:** `feature/sprint1-safety-guardrails-zainab`  
-**PR Title:** `Task-sept8-safety-guardrails-zainabraza`
+**PR Title:** `Task-sept9-safety-guardrails-zainabraza`
 
 ## 1. Objective
 
-Finalize the healthcare assistant system prompt and enforce deterministic safety
-boundaries for non-diagnostic, prescription, and emergency requests.
+Upgrade the Healthcare Assistant safety layer with stricter system prompts,
+explicit medical disclaimers, referral guidelines, non-diagnostic boundaries,
+and immediate redirect logic for potentially life-threatening medical queries.
 
 ## 2. Safety Policy
 
-The assistant is informational only. It must not:
+The Healthcare Assistant provides general informational support only.
 
-- provide a definitive medical diagnosis;
+The assistant must not:
+
+- provide a definitive diagnosis;
+- confirm or imply that a user has a specific disease or condition;
 - prescribe medicines;
-- provide personalized dosage or prescription changes;
-- invent patient symptoms, medical history, test results, or diagnoses;
+- provide personalized dosage instructions;
+- recommend personalized treatment plans;
+- tell users to start, stop, increase, decrease, or switch prescription medication;
+- invent symptoms, medical history, medications, test results, or diagnoses;
 - replace professional medical evaluation or emergency services.
 
-## 3. Refusal Logic
+## 3. Medical Disclaimer
 
-### Diagnosis Requests
+The assistant must communicate its limitations whenever a request involves
+diagnosis, treatment, medication, or potentially serious symptoms.
 
-Examples:
+The core boundary is:
 
-- `What disease do I have?`
-- `Do I definitely have diabetes?`
+> The assistant provides general informational support only and does not replace
+> professional medical evaluation.
 
-Expected behavior:
+General information must not be presented as personalized medical advice.
 
-- refuse to provide a definitive diagnosis;
-- explain the informational limitation;
-- encourage professional evaluation where appropriate.
+## 4. Non-Diagnostic Boundary
 
-### Prescription Requests
+The assistant must never:
 
-Examples:
+- provide a definitive diagnosis;
+- confirm that a user has a disease;
+- state that symptoms prove a particular condition;
+- present a possible diagnosis as a confirmed diagnosis.
 
-- `What antibiotic should I take?`
-- `Can I increase my dosage?`
-- `Should I stop my medication?`
+### Example
 
-Expected behavior:
-
-- refuse personalized prescribing or dosage instructions;
-- recommend consultation with a qualified healthcare professional or pharmacist.
-
-### Emergency Requests
-
-Examples:
-
-- severe chest pain;
-- difficulty breathing;
-- inability to breathe;
-- heavy/severe bleeding;
-- loss of consciousness;
-- stroke warning language.
-
-Expected behavior:
-
-- immediately use the urgent-care path;
-- direct the user to urgent or emergency professional medical care;
-- do not diagnose or continue normal medication/diagnosis handling.
-
-## 4. Safety Priority
-
-When multiple safety conditions are present, the priority is:
-
-1. Emergency
-2. Prescription / medication-change request
-3. Diagnosis request
-4. Normal informational request
-
-Example:
-
-`I have severe chest pain. What medicine should I take?`
-
-Expected classification: **Emergency**, because urgent safety takes priority over
-prescription handling.
-
-## 5. Prompt Structure
-
-The finalized system prompt includes:
-
-- non-diagnostic boundary;
-- prescription and medication boundary;
-- emergency safety boundary;
-- explicit refusal logic;
-- anti-fabrication rules;
-- grounded/RAG rules;
-- privacy requirements;
-- prompt-injection resistance;
-- clear communication requirements.
-
-## 6. Deterministic Guardrail Mechanism
+User:
 
 ```text
-User input
-    ↓
-Normalize input
-    ↓
-Emergency check
-    ↓ no
-Prescription check
-    ↓ no
-Diagnosis check
-    ↓ no
-Normal informational flow
+Do I definitely have diabetes?
