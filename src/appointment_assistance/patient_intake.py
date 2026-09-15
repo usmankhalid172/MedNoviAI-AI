@@ -9,16 +9,22 @@ class PatientIntakeTurnResult:
     response: str
     missing_fields: list[str]
     ready: bool
-    context: dict[str, str] | None = None
+    context: dict[str, str | None] | None = None
 
 
 @dataclass
 class PatientIntakeInformation:
-    """Information collected during patient symptom intake."""
+    """Structured information collected during patient intake."""
 
+    # Required intake fields
     symptoms: str | None = None
     symptom_onset: str | None = None
     age_group: str | None = None
+
+    # Optional intake fields
+    secondary_history: str | None = None
+    additional_details: str | None = None
+
 
 class PatientIntakeCollector:
     """Collect patient information across multiple conversation turns."""
@@ -31,9 +37,12 @@ class PatientIntakeCollector:
         symptoms: str | None = None,
         symptom_onset: str | None = None,
         age_group: str | None = None,
+        secondary_history: str | None = None,
+        additional_details: str | None = None,
     ) -> PatientIntakeInformation:
-        """Update the information collected from the patient."""
+        """Update required and optional patient intake information."""
 
+        # Required fields
         if symptoms:
             self.info.symptoms = symptoms.strip()
 
@@ -43,10 +52,20 @@ class PatientIntakeCollector:
         if age_group:
             self.info.age_group = age_group.strip()
 
+        # Optional fields
+        if secondary_history:
+            self.info.secondary_history = secondary_history.strip()
+
+        if additional_details:
+            self.info.additional_details = additional_details.strip()
+
         return self.info
 
-    def extract_from_message(self, message: str) -> PatientIntakeInformation:
-        """Extract basic patient intake information from a message."""
+    def extract_from_message(
+        self,
+        message: str,
+    ) -> PatientIntakeInformation:
+        """Extract patient intake information from a message."""
 
         if not isinstance(message, str):
             raise ValueError("message must be a string")
@@ -58,11 +77,14 @@ class PatientIntakeCollector:
 
         extracted = {}
 
+        # Primary complaint / symptoms
         # Examples:
         # "I have a headache"
         # "I am experiencing fever and cough"
+        # "I am having stomach pain"
         symptom_match = re.search(
-            r"\b(?:i have|i am having|i'm having|experiencing|suffering from)\s+"
+            r"\b(?:i have|i am having|i'm having|experiencing|"
+            r"suffering from)\s+"
             r"(.+?)(?:\.|$)",
             normalized_message,
             re.IGNORECASE,
@@ -71,6 +93,7 @@ class PatientIntakeCollector:
         if symptom_match:
             extracted["symptoms"] = symptom_match.group(1).strip()
 
+        # Symptom onset
         # Examples:
         # "since yesterday"
         # "started yesterday"
@@ -89,6 +112,7 @@ class PatientIntakeCollector:
         if onset_match:
             extracted["symptom_onset"] = onset_match.group(1).strip()
 
+        # Age group
         # Examples:
         # "I am an adult"
         # "adult"
@@ -116,10 +140,11 @@ class PatientIntakeCollector:
         return self.update(**extracted)
 
     def missing_fields(self) -> list[str]:
-        """Return the intake information that is still missing."""
+        """Return required intake information that is still missing."""
 
         missing = []
 
+        # Only required fields affect readiness.
         if not self.info.symptoms:
             missing.append("symptoms")
 
@@ -135,9 +160,20 @@ class PatientIntakeCollector:
         """Return True when all required intake information is collected."""
 
         return not self.missing_fields()
-    
-    def get_context(self) -> dict[str, str]:
-        """Return completed patient information for the recommendation module."""
+
+    def get_context(self) -> dict[str, str | None]:
+        """
+        Return standardized patient data for the recommendation module.
+
+        Required fields:
+        - primary_complaint
+        - symptom_onset
+        - age_group
+
+        Optional fields:
+        - secondary_history
+        - additional_details
+        """
 
         if not self.is_ready():
             raise ValueError(
@@ -146,13 +182,15 @@ class PatientIntakeCollector:
             )
 
         return {
-            "symptoms": self.info.symptoms,
+            "primary_complaint": self.info.symptoms,
             "symptom_onset": self.info.symptom_onset,
             "age_group": self.info.age_group,
+            "secondary_history": self.info.secondary_history,
+            "additional_details": self.info.additional_details,
         }
-    
+
     def next_question(self) -> str | None:
-        """Return the next question needed to complete patient intake."""
+        """Return the next question needed to complete required intake."""
 
         if not self.info.symptoms:
             return "What symptoms are you experiencing?"
@@ -165,7 +203,10 @@ class PatientIntakeCollector:
 
         return None
 
-    def process_message(self, message: str) -> PatientIntakeTurnResult:
+    def process_message(
+        self,
+        message: str,
+    ) -> PatientIntakeTurnResult:
         """Process one patient message and return the dialogue result."""
 
         self.extract_from_message(message)
