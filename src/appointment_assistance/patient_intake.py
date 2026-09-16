@@ -10,6 +10,7 @@ class PatientIntakeTurnResult:
     missing_fields: list[str]
     ready: bool
     context: dict[str, str | None] | None = None
+    handoff: bool = False
 
 
 @dataclass
@@ -82,9 +83,12 @@ class PatientIntakeCollector:
         # "I have a headache"
         # "I am experiencing fever and cough"
         # "I am having stomach pain"
+        # "I've been having a headache"
+        # "I have been having chest pain"
         symptom_match = re.search(
-            r"\b(?:i have|i am having|i'm having|experiencing|"
-            r"suffering from)\s+"
+            r"\b(?:i have|i am having|i'm having|"
+            r"i've been having|i have been having|"
+            r"experiencing|suffering from)\s+"
             r"(.+?)(?:\.|$)",
             normalized_message,
             re.IGNORECASE,
@@ -98,25 +102,47 @@ class PatientIntakeCollector:
         # "since yesterday"
         # "started yesterday"
         # "for two days"
-        onset_match = re.search(
+        # "for 3 weeks"
+        # "two days ago"
+        # "yesterday"
+        # "today"
+        # "last night"
+        # "this morning"
+        onset_patterns = [
             r"\b("
             r"since\s+.+?"
             r"|started\s+.+?"
             r"|for\s+\d+\s+(?:day|days|week|weeks|month|months)"
-            r")"
-            r"(?:\.|$)",
-            normalized_message,
-            re.IGNORECASE,
-        )
+            r"|for\s+(?:a|one|two|three|four|five|six|seven)\s+"
+            r"(?:day|days|week|weeks|month|months)"
+            r"|.+?\s+ago"
+            r"|yesterday"
+            r"|today"
+            r"|last\s+(?:night|evening|week|month)"
+            r"|this\s+(?:morning|afternoon|evening)"
+            r")\b",
+        ]
 
-        if onset_match:
-            extracted["symptom_onset"] = onset_match.group(1).strip()
+        for pattern in onset_patterns:
+            onset_match = re.search(
+                pattern,
+                normalized_message,
+                re.IGNORECASE,
+            )
+
+            if onset_match:
+                extracted["symptom_onset"] = (
+                    onset_match.group(1).strip()
+                )
+                break
 
         # Age group
         # Examples:
         # "I am an adult"
         # "adult"
         # "I'm a child"
+        # "I'm 22"
+        # "I am 10 years old"
         age_match = re.search(
             r"\b("
             r"child|children|teenager|teen|adult|senior|elderly"
@@ -136,6 +162,27 @@ class PatientIntakeCollector:
                 age_group = "senior"
 
             extracted["age_group"] = age_group
+
+        else:
+            # Convert an explicit numeric age into an age group.
+            numeric_age_match = re.search(
+                r"\b(?:i'?m|i am)?\s*(\d{1,3})"
+                r"\s*(?:years?\s*old)?\b",
+                normalized_message,
+                re.IGNORECASE,
+            )
+
+            if numeric_age_match:
+                age = int(numeric_age_match.group(1))
+
+                if 0 <= age <= 12:
+                    extracted["age_group"] = "child"
+                elif 13 <= age <= 17:
+                    extracted["age_group"] = "teenager"
+                elif 18 <= age <= 64:
+                    extracted["age_group"] = "adult"
+                elif age >= 65:
+                    extracted["age_group"] = "senior"
 
         return self.update(**extracted)
 
@@ -163,7 +210,8 @@ class PatientIntakeCollector:
 
     def get_context(self) -> dict[str, str | None]:
         """
-        Return standardized patient data for the recommendation module.
+        Return structured patient data for backend storage,
+        recommendation, and summary generation.
 
         Required fields:
         - primary_complaint
@@ -226,6 +274,7 @@ class PatientIntakeCollector:
                 missing_fields=missing_fields,
                 ready=ready,
                 context=self.get_context(),
+                handoff=True,
             )
 
         return PatientIntakeTurnResult(
@@ -233,4 +282,5 @@ class PatientIntakeCollector:
             missing_fields=missing_fields,
             ready=ready,
             context=None,
+            handoff=False,
         )
