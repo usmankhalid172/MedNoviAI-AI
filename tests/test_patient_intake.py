@@ -9,9 +9,11 @@ def test_intake_starts_empty():
     assert collector.info.symptoms is None
     assert collector.info.symptom_onset is None
     assert collector.info.age_group is None
+    assert collector.info.secondary_history is None
+    assert collector.info.additional_details is None
 
 
-def test_intake_starts_with_all_fields_missing():
+def test_intake_starts_with_required_fields_missing():
     collector = PatientIntakeCollector()
 
     assert collector.missing_fields() == [
@@ -21,7 +23,7 @@ def test_intake_starts_with_all_fields_missing():
     ]
 
 
-def test_collector_stores_symptom_information():
+def test_collector_stores_primary_complaint():
     collector = PatientIntakeCollector()
 
     collector.update(symptoms="headache")
@@ -41,6 +43,45 @@ def test_collector_stores_onset_and_age_group():
     assert collector.info.age_group == "adult"
 
 
+def test_collector_stores_optional_secondary_history():
+    collector = PatientIntakeCollector()
+
+    collector.update(
+        secondary_history="Previous history of asthma",
+    )
+
+    assert collector.info.secondary_history == (
+        "Previous history of asthma"
+    )
+
+
+def test_collector_stores_optional_additional_details():
+    collector = PatientIntakeCollector()
+
+    collector.update(
+        additional_details="Pain becomes worse at night",
+    )
+
+    assert collector.info.additional_details == (
+        "Pain becomes worse at night"
+    )
+
+
+def test_optional_fields_do_not_appear_in_missing_required_fields():
+    collector = PatientIntakeCollector()
+
+    collector.update(
+        secondary_history="Previous history of asthma",
+        additional_details="Pain becomes worse at night",
+    )
+
+    assert collector.missing_fields() == [
+        "symptoms",
+        "symptom_onset",
+        "age_group",
+    ]
+
+
 def test_missing_fields_are_updated_after_each_turn():
     collector = PatientIntakeCollector()
 
@@ -58,7 +99,7 @@ def test_missing_fields_are_updated_after_each_turn():
     ]
 
 
-def test_intake_becomes_ready_when_all_information_is_collected():
+def test_intake_becomes_ready_when_all_required_information_is_collected():
     collector = PatientIntakeCollector()
 
     collector.update(
@@ -68,7 +109,36 @@ def test_intake_becomes_ready_when_all_information_is_collected():
     )
 
     assert collector.missing_fields() == []
-    assert collector.is_ready()
+    assert collector.is_ready() is True
+
+
+def test_intake_is_ready_without_optional_information():
+    collector = PatientIntakeCollector()
+
+    collector.update(
+        symptoms="headache",
+        symptom_onset="since yesterday",
+        age_group="adult",
+    )
+
+    assert collector.info.secondary_history is None
+    assert collector.info.additional_details is None
+    assert collector.is_ready() is True
+
+
+def test_optional_information_does_not_affect_readiness():
+    collector = PatientIntakeCollector()
+
+    collector.update(
+        symptoms="headache",
+        symptom_onset="since yesterday",
+        age_group="adult",
+        secondary_history="No previous medical history",
+        additional_details="Mild pain",
+    )
+
+    assert collector.is_ready() is True
+    assert collector.missing_fields() == []
 
 
 def test_update_ignores_empty_values():
@@ -82,10 +152,15 @@ def test_update_ignores_empty_values():
     collector.update(
         symptoms="",
         age_group="",
+        secondary_history="",
+        additional_details="",
     )
 
     assert collector.info.symptoms == "headache"
     assert collector.info.age_group == "adult"
+    assert collector.info.secondary_history is None
+    assert collector.info.additional_details is None
+
 
 def test_next_question_starts_with_symptoms():
     collector = PatientIntakeCollector()
@@ -118,7 +193,7 @@ def test_next_question_asks_for_age_group():
     )
 
 
-def test_next_question_returns_none_when_ready():
+def test_next_question_returns_none_when_required_fields_are_ready():
     collector = PatientIntakeCollector()
 
     collector.update(
@@ -129,7 +204,8 @@ def test_next_question_returns_none_when_ready():
 
     assert collector.next_question() is None
 
-def test_extracts_symptoms_from_message():
+
+def test_extracts_primary_complaint_from_message():
     collector = PatientIntakeCollector()
 
     collector.extract_from_message("I have a headache.")
@@ -153,7 +229,7 @@ def test_extracts_age_group_from_message():
     assert collector.info.age_group == "adult"
 
 
-def test_extracts_multiple_intake_fields_from_one_message():
+def test_extracts_multiple_required_fields_from_one_message():
     collector = PatientIntakeCollector()
 
     collector.extract_from_message(
@@ -163,23 +239,6 @@ def test_extracts_multiple_intake_fields_from_one_message():
     assert collector.info.symptoms == "a headache"
     assert collector.info.symptom_onset == "Since yesterday"
     assert collector.info.age_group == "adult"
-
-def test_process_message_asks_for_missing_information():
-    collector = PatientIntakeCollector()
-
-    response = collector.process_message("I have a headache.")
-
-    assert response == "When did your symptoms start?"
-
-
-def test_process_message_keeps_information_between_turns():
-    collector = PatientIntakeCollector()
-
-    response = collector.process_message("I have a headache.")
-    assert response == "When did your symptoms start?"
-
-    response = collector.process_message("Since yesterday.")
-    assert response == "What is your age group?"
 
 
 def test_process_message_asks_for_missing_information():
@@ -226,14 +285,17 @@ def test_process_message_completes_after_multiple_turns():
     )
     assert result.missing_fields == []
     assert result.ready is True
+
     assert result.context == {
-        "symptoms": "a headache",
+        "primary_complaint": "a headache",
         "symptom_onset": "Since yesterday",
         "age_group": "adult",
+        "secondary_history": None,
+        "additional_details": None,
     }
 
 
-def test_process_message_handles_all_information_in_one_turn():
+def test_process_message_handles_all_required_information_in_one_turn():
     collector = PatientIntakeCollector()
 
     result = collector.process_message(
@@ -242,13 +304,17 @@ def test_process_message_handles_all_information_in_one_turn():
 
     assert result.ready is True
     assert result.missing_fields == []
+
     assert result.context == {
-        "symptoms": "a headache",
+        "primary_complaint": "a headache",
         "symptom_onset": "Since yesterday",
         "age_group": "adult",
+        "secondary_history": None,
+        "additional_details": None,
     }
-    
-def test_get_context_returns_completed_patient_information():
+
+
+def test_get_context_returns_standardized_patient_information():
     collector = PatientIntakeCollector()
 
     collector.update(
@@ -260,13 +326,37 @@ def test_get_context_returns_completed_patient_information():
     context = collector.get_context()
 
     assert context == {
-        "symptoms": "headache",
+        "primary_complaint": "headache",
         "symptom_onset": "since yesterday",
         "age_group": "adult",
+        "secondary_history": None,
+        "additional_details": None,
     }
 
 
-def test_get_context_rejects_incomplete_information():
+def test_get_context_includes_optional_information_when_available():
+    collector = PatientIntakeCollector()
+
+    collector.update(
+        symptoms="headache",
+        symptom_onset="since yesterday",
+        age_group="adult",
+        secondary_history="No previous history of migraine",
+        additional_details="Pain is worse in the morning",
+    )
+
+    context = collector.get_context()
+
+    assert context == {
+        "primary_complaint": "headache",
+        "symptom_onset": "since yesterday",
+        "age_group": "adult",
+        "secondary_history": "No previous history of migraine",
+        "additional_details": "Pain is worse in the morning",
+    }
+
+
+def test_get_context_rejects_incomplete_required_information():
     collector = PatientIntakeCollector()
 
     collector.update(
