@@ -369,3 +369,145 @@ def test_get_context_rejects_incomplete_required_information():
         assert False
     except ValueError:
         assert True
+
+
+# ---------------------------------------------------------
+# Sep 11: Finalized dialogue and structured patient data
+# ---------------------------------------------------------
+
+
+def test_process_message_sets_handoff_false_when_intake_is_incomplete():
+    collector = PatientIntakeCollector()
+
+    result = collector.process_message("I have a headache.")
+
+    assert result.ready is False
+    assert result.handoff is False
+    assert result.context is None
+
+
+def test_process_message_sets_handoff_true_when_intake_is_complete():
+    collector = PatientIntakeCollector()
+
+    result = collector.process_message(
+        "I have a headache. Since yesterday. I am an adult."
+    )
+
+    assert result.ready is True
+    assert result.handoff is True
+    assert result.context is not None
+
+
+def test_extracts_natural_symptom_statement():
+    collector = PatientIntakeCollector()
+
+    collector.extract_from_message(
+        "I've been having a headache."
+    )
+
+    assert collector.info.symptoms == "a headache"
+
+
+def test_extracts_yesterday_as_symptom_onset():
+    collector = PatientIntakeCollector()
+
+    collector.extract_from_message("Yesterday.")
+
+    assert collector.info.symptom_onset == "Yesterday"
+
+
+def test_extracts_two_days_ago_as_symptom_onset():
+    collector = PatientIntakeCollector()
+
+    collector.extract_from_message("Two days ago.")
+
+    assert collector.info.symptom_onset == "Two days ago"
+
+
+def test_extracts_numeric_adult_age_group():
+    collector = PatientIntakeCollector()
+
+    collector.extract_from_message("I'm 22.")
+
+    assert collector.info.age_group == "adult"
+
+
+def test_extracts_numeric_child_age_group():
+    collector = PatientIntakeCollector()
+
+    collector.extract_from_message("I am 10 years old.")
+
+    assert collector.info.age_group == "child"
+
+
+def test_extracts_numeric_teenager_age_group():
+    collector = PatientIntakeCollector()
+
+    collector.extract_from_message("I am 16 years old.")
+
+    assert collector.info.age_group == "teenager"
+
+
+def test_extracts_numeric_senior_age_group():
+    collector = PatientIntakeCollector()
+
+    collector.extract_from_message("I am 70 years old.")
+
+    assert collector.info.age_group == "senior"
+
+
+def test_processes_natural_multi_turn_patient_dialogue():
+    collector = PatientIntakeCollector()
+
+    result = collector.process_message(
+        "I've been having a headache."
+    )
+
+    assert result.ready is False
+    assert result.response == "When did your symptoms start?"
+
+    result = collector.process_message("Two days ago.")
+
+    assert result.ready is False
+    assert result.response == "What is your age group?"
+
+    result = collector.process_message("I'm 22.")
+
+    assert result.ready is True
+    assert result.handoff is True
+    assert result.missing_fields == []
+
+    assert result.context == {
+        "primary_complaint": "a headache",
+        "symptom_onset": "Two days ago",
+        "age_group": "adult",
+        "secondary_history": None,
+        "additional_details": None,
+    }
+
+
+def test_structured_patient_data_includes_optional_information():
+    collector = PatientIntakeCollector()
+
+    collector.update(
+        symptoms="headache",
+        symptom_onset="yesterday",
+        age_group="adult",
+        secondary_history="History of migraine",
+        additional_details="Pain is worse in the morning",
+    )
+
+    result = collector.process_message(
+        "I am an adult."
+    )
+
+    assert result.ready is True
+    assert result.handoff is True
+
+    assert result.context == {
+        "primary_complaint": "headache",
+        "symptom_onset": "yesterday",
+        "age_group": "adult",
+        "secondary_history": "History of migraine",
+        "additional_details": "Pain is worse in the morning",
+    }
