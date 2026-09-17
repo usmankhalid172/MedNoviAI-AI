@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 import re
 
 
@@ -30,6 +31,12 @@ class PatientIntakeInformation:
 class PatientIntakeCollector:
     """Collect patient information across multiple conversation turns."""
 
+    REQUIRED_FIELDS = [
+        "symptoms",
+        "symptom_onset",
+        "age_group",
+    ]
+
     def __init__(self) -> None:
         self.info = PatientIntakeInformation()
 
@@ -43,7 +50,6 @@ class PatientIntakeCollector:
     ) -> PatientIntakeInformation:
         """Update required and optional patient intake information."""
 
-        # Required fields
         if symptoms:
             self.info.symptoms = symptoms.strip()
 
@@ -53,7 +59,6 @@ class PatientIntakeCollector:
         if age_group:
             self.info.age_group = age_group.strip()
 
-        # Optional fields
         if secondary_history:
             self.info.secondary_history = secondary_history.strip()
 
@@ -62,11 +67,8 @@ class PatientIntakeCollector:
 
         return self.info
 
-    def extract_from_message(
-        self,
-        message: str,
-    ) -> PatientIntakeInformation:
-        """Extract patient intake information from a message."""
+    def _normalize_message(self, message: str) -> str:
+        """Normalize whitespace and validate a patient message."""
 
         if not isinstance(message, str):
             raise ValueError("message must be a string")
@@ -76,38 +78,60 @@ class PatientIntakeCollector:
         if not normalized_message:
             raise ValueError("message must not be empty")
 
-        extracted = {}
+        return normalized_message
 
-        # Primary complaint / symptoms
-        # Examples:
-        # "I have a headache"
-        # "I am experiencing fever and cough"
-        # "I am having stomach pain"
-        # "I've been having a headache"
-        # "I have been having chest pain"
-        symptom_match = re.search(
-            r"\b(?:i have|i am having|i'm having|"
-            r"i've been having|i have been having|"
-            r"experiencing|suffering from)\s+"
-            r"(.+?)(?:\.|$)",
-            normalized_message,
+    def _extract_age_group(self, message: str) -> str | None:
+        """Extract or derive an age group from a patient message."""
+
+        age_match = re.search(
+            r"\b("
+            r"child|children|teenager|teen|adult|senior|elderly"
+            r")\b",
+            message,
             re.IGNORECASE,
         )
 
-        if symptom_match:
-            extracted["symptoms"] = symptom_match.group(1).strip()
+        if age_match:
+            age_group = age_match.group(1).lower()
 
-        # Symptom onset
-        # Examples:
-        # "since yesterday"
-        # "started yesterday"
-        # "for two days"
-        # "for 3 weeks"
-        # "two days ago"
-        # "yesterday"
-        # "today"
-        # "last night"
-        # "this morning"
+            if age_group in {"child", "children"}:
+                return "child"
+
+            if age_group in {"teenager", "teen"}:
+                return "teenager"
+
+            if age_group == "elderly":
+                return "senior"
+
+            return age_group
+
+        numeric_age_match = re.search(
+            r"\b(?:i'?m|i am)?\s*(\d{1,3})"
+            r"\s*(?:years?\s*old)?\b",
+            message,
+            re.IGNORECASE,
+        )
+
+        if numeric_age_match:
+            age = int(numeric_age_match.group(1))
+
+            if 0 <= age <= 12:
+                return "child"
+
+            if 13 <= age <= 17:
+                return "teenager"
+
+            if 18 <= age <= 64:
+                return "adult"
+
+            if age >= 65:
+                return "senior"
+
+        return None
+
+    def _extract_onset(self, message: str) -> str | None:
+        """Extract symptom onset information."""
+
         onset_patterns = [
             r"\b("
             r"since\s+.+?"
@@ -126,72 +150,169 @@ class PatientIntakeCollector:
         for pattern in onset_patterns:
             onset_match = re.search(
                 pattern,
-                normalized_message,
+                message,
                 re.IGNORECASE,
             )
 
             if onset_match:
-                extracted["symptom_onset"] = (
-                    onset_match.group(1).strip()
-                )
-                break
+                return onset_match.group(1).strip()
 
-        # Age group
-        # Examples:
-        # "I am an adult"
-        # "adult"
-        # "I'm a child"
-        # "I'm 22"
-        # "I am 10 years old"
-        age_match = re.search(
-            r"\b("
-            r"child|children|teenager|teen|adult|senior|elderly"
-            r")\b",
+        return None
+
+    def extract_from_message(
+        self,
+        message: str,
+    ) -> PatientIntakeInformation:
+        """Extract patient intake information from a message."""
+
+        normalized_message = self._normalize_message(message)
+
+        extracted = {}
+
+        # Primary complaint / symptoms
+        symptom_match = re.search(
+            r"\b(?:i have|i am having|i'm having|"
+            r"i've been having|i have been having|"
+            r"experiencing|suffering from)\s+"
+            r"(.+?)(?:\.|$)",
             normalized_message,
             re.IGNORECASE,
         )
 
-        if age_match:
-            age_group = age_match.group(1).lower()
+        if symptom_match:
+            extracted["symptoms"] = symptom_match.group(1).strip()
 
-            if age_group in {"child", "children"}:
-                age_group = "child"
-            elif age_group in {"teenager", "teen"}:
-                age_group = "teenager"
-            elif age_group == "elderly":
-                age_group = "senior"
+        # Symptom onset
+        onset = self._extract_onset(normalized_message)
 
+        if onset:
+            extracted["symptom_onset"] = onset
+
+        # Age group
+        age_group = self._extract_age_group(normalized_message)
+
+        if age_group:
             extracted["age_group"] = age_group
 
-        else:
-            # Convert an explicit numeric age into an age group.
-            numeric_age_match = re.search(
-                r"\b(?:i'?m|i am)?\s*(\d{1,3})"
-                r"\s*(?:years?\s*old)?\b",
-                normalized_message,
-                re.IGNORECASE,
+        return self.update(**extracted)
+
+
+    def _extract_follow_up_answer(
+         self,
+         message: str,
+         ) -> PatientIntakeInformation:
+         """
+         Interpret a short patient response using the currently
+         missing required field as dialogue context.
+         """
+
+         normalized_message = self._normalize_message(message)
+
+         missing = self.missing_fields()
+
+         # If symptoms are missing, only treat the message as a symptom
+         # answer when it appears to contain an actual patient complaint.
+         if missing and missing[0] == "symptoms":
+             symptom_indicators = (
+                 "pain", "ache", "headache", "fever", "cough", "cold",
+                 "nausea", "vomiting", "dizziness", "fatigue", "weakness",
+                 "rash", "bleeding", "swelling", "sore", "painful",
+                 "difficulty", "shortness", "breathing", "diarrhea",
+                 "constipation", "infection",
+             )
+
+             message_lower = normalized_message.lower()
+
+             if any(
+                 indicator in message_lower
+                 for indicator in symptom_indicators
+             ):
+                 self.update(symptoms=normalized_message)
+
+         # If onset is missing, interpret the answer as symptom onset.
+         elif missing and missing[0] == "symptom_onset":
+             onset = self._extract_onset(normalized_message)
+
+             if onset:
+                 self.update(symptom_onset=onset)
+             else:
+                 self.update(symptom_onset=normalized_message)
+
+         # If age group is missing, interpret the answer as an age group.
+         elif missing and missing[0] == "age_group":
+             age_group = self._extract_age_group(normalized_message)
+
+             if age_group:
+                 self.update(age_group=age_group)
+
+         return self.info
+
+
+
+    def process_message(
+        self,
+        message: str,
+    ) -> PatientIntakeTurnResult:
+        """Process one patient message using multi-turn dialogue context."""
+
+        normalized_message = self._normalize_message(message)
+
+        # Remember which required fields were missing before
+        # processing this turn.
+        missing_before = self.missing_fields()
+
+        # First extract information explicitly stated in the message.
+        self.extract_from_message(normalized_message)
+
+        missing_after_extraction = self.missing_fields()
+
+        # Only use contextual follow-up interpretation when the
+        # message did not explicitly provide any missing field.
+        #
+        # Example:
+        # "I have a headache." -> symptoms are extracted,
+        # so we should NOT treat the whole sentence as onset.
+        #
+        # Example:
+        # "Yesterday." -> no explicit field is extracted,
+        # so it is interpreted as the answer to the onset question.
+        if (
+            missing_before
+            and len(missing_after_extraction) == len(missing_before)
+        ):
+            self._extract_follow_up_answer(normalized_message)
+
+        missing_fields = self.missing_fields()
+        ready = not missing_fields
+
+        if ready:
+            response = (
+                "Thank you. I have collected the required patient "
+                "information. The information can now be passed to "
+                "the recommendation module."
             )
 
-            if numeric_age_match:
-                age = int(numeric_age_match.group(1))
+            return PatientIntakeTurnResult(
+                response=response,
+                missing_fields=[],
+                ready=True,
+                context=self.get_backend_record(),
+                handoff=True,
+            )
 
-                if 0 <= age <= 12:
-                    extracted["age_group"] = "child"
-                elif 13 <= age <= 17:
-                    extracted["age_group"] = "teenager"
-                elif 18 <= age <= 64:
-                    extracted["age_group"] = "adult"
-                elif age >= 65:
-                    extracted["age_group"] = "senior"
-
-        return self.update(**extracted)
+        return PatientIntakeTurnResult(
+            response=self.next_question(),
+            missing_fields=missing_fields,
+            ready=False,
+            context=None,
+            handoff=False,
+        )
 
     def missing_fields(self) -> list[str]:
         """Return required intake information that is still missing."""
 
         missing = []
 
-        # Only required fields affect readiness.
         if not self.info.symptoms:
             missing.append("symptoms")
 
@@ -210,8 +331,17 @@ class PatientIntakeCollector:
 
     def get_context(self) -> dict[str, str | None]:
         """
-        Return structured patient data for backend storage,
-        recommendation, and summary generation.
+        Return structured patient data.
+
+        This method is kept for backward compatibility with the
+        existing dialogue and recommendation interfaces.
+        """
+
+        return self.get_backend_record()
+
+    def get_backend_record(self) -> dict[str, str | None]:
+        """
+        Return the finalized patient record for backend storage handoff.
 
         Required fields:
         - primary_complaint
@@ -251,36 +381,3 @@ class PatientIntakeCollector:
 
         return None
 
-    def process_message(
-        self,
-        message: str,
-    ) -> PatientIntakeTurnResult:
-        """Process one patient message and return the dialogue result."""
-
-        self.extract_from_message(message)
-
-        missing_fields = self.missing_fields()
-        ready = not missing_fields
-
-        if ready:
-            response = (
-                "Thank you. I have collected the required patient "
-                "information. The information can now be passed to "
-                "the recommendation module."
-            )
-
-            return PatientIntakeTurnResult(
-                response=response,
-                missing_fields=missing_fields,
-                ready=ready,
-                context=self.get_context(),
-                handoff=True,
-            )
-
-        return PatientIntakeTurnResult(
-            response=self.next_question(),
-            missing_fields=missing_fields,
-            ready=ready,
-            context=None,
-            handoff=False,
-        )
