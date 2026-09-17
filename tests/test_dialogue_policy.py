@@ -3,6 +3,9 @@ import pytest
 from src.appointment_assistance.dialogue_policy import (
     PatientDialoguePolicy,
 )
+from src.appointment_assistance.patient_intake import (
+    PatientIntakeCollector,
+)
 
 
 def test_dialogue_policy_starts_with_all_fields_missing():
@@ -133,6 +136,7 @@ def test_policy_does_not_handoff_when_information_is_incomplete():
     assert result.ready is False
     assert result.handoff is False
     assert result.context is None
+    assert result.patient_record is None
     assert result.missing_fields == ["age_group"]
 
 
@@ -289,3 +293,68 @@ def test_non_string_message_is_rejected():
 
     with pytest.raises(ValueError):
         policy.process_message(None)
+
+
+# ---------------------------------------------------------
+# Integration tests for PatientDialoguePolicy + PatientIntakeCollector
+# ---------------------------------------------------------
+
+
+def test_dialogue_policy_uses_patient_intake_collector():
+    policy = PatientDialoguePolicy()
+
+    assert isinstance(policy.intake, PatientIntakeCollector)
+
+
+def test_dialogue_policy_state_comes_from_patient_intake():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+
+    assert policy.state.symptoms == "a headache"
+    assert policy.intake.info.symptoms == "a headache"
+
+
+def test_completed_dialogue_provides_structured_patient_record():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+    policy.process_message("Since yesterday.")
+
+    result = policy.process_message("I am an adult.")
+
+    assert result.ready is True
+    assert result.handoff is True
+
+    assert result.patient_record == {
+        "primary_complaint": "a headache",
+        "symptom_onset": "Since yesterday",
+        "age_group": "adult",
+        "secondary_history": None,
+        "additional_details": None,
+    }
+
+
+def test_patient_record_can_be_retrieved_after_handoff():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message(
+        "I have a fever. Since yesterday. I am an adult."
+    )
+
+    assert policy.get_patient_record() == {
+        "primary_complaint": "a fever",
+        "symptom_onset": "Since yesterday",
+        "age_group": "adult",
+        "secondary_history": None,
+        "additional_details": None,
+    }
+
+
+def test_patient_record_rejects_incomplete_intake():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+
+    with pytest.raises(ValueError):
+        policy.get_patient_record()
