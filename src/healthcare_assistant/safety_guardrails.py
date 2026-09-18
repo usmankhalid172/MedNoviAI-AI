@@ -4,8 +4,8 @@ import re
 from typing import Dict, Optional
 
 
-# Input safety priority:
-# emergency > serious/urgent > prescription > diagnosis > unclear > normal
+# Input priority:
+# emergency > serious > prescription > diagnosis > unclear > normal
 
 EMERGENCY_PATTERNS = (
     r"\b(?:severe|crushing|intense|very bad)\s+(?:chest\s+)?pain\b",
@@ -42,7 +42,6 @@ SERIOUS_SYMPTOM_PATTERNS = (
     r"\bsevere\s+weakness\b",
     r"\bsevere\s+pain\s+(?:that\s+)?(?:isn't|is\s+not)\s+improving\b",
     r"\bpain\s+(?:that\s+)?(?:isn't|is\s+not)\s+improving\b",
-    r"\b(?:urgent|prompt)\s+medical\s+(?:attention|evaluation)\b",
 )
 
 
@@ -104,30 +103,35 @@ UNCLEAR_MEDICAL_PATTERNS = (
 )
 
 
+# Output safety patterns.
 UNSAFE_DIAGNOSIS_OUTPUT_PATTERNS = (
-    r"\bbased\s+on\s+(?:your|the)\s+symptoms?.{0,80}\byou\s+(?:definitely\s+)?have\b",
-    r"\bfrom\s+what\s+you\s+described.{0,80}\byou\s+(?:definitely\s+)?have\b",
-    r"\byou\s+definitely\s+have\s+(?:a\s+|an\s+)?[a-z][a-z-]+\b",
+    r"\bbased\s+on\s+(?:your|the)\s+symptoms?.{0,80}\byou\s+(?:(?:definitely|probably|likely)\s+)?have\b",
+    r"\bfrom\s+what\s+you\s+described.{0,80}\byou\s+(?:(?:definitely|probably|likely)\s+)?have\b",
+    r"\byou\s+(?:definitely|probably|likely)\s+have\s+(?:a\s+|an\s+)?[a-z][a-z-]+\b",
     r"\byou\s+are\s+diagnosed\s+with\s+(?:a\s+|an\s+)?[a-z][a-z-]+\b",
     r"\bi\s+diagnose\s+you\s+with\s+(?:a\s+|an\s+)?[a-z][a-z-]+\b",
     r"\byour\s+diagnosis\s+is\s+(?:a\s+|an\s+)?[a-z][a-z-]+\b",
     r"\byou\s+have\s+(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke|an?\s+infection)\b",
-    r"\bthis\s+(?:is|looks\s+like|appears\s+to\s+be)\s+(?:definitely\s+)?(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke)\b",
+    r"\bthis\s+(?:is|looks\s+like|appears\s+to\s+be)\s+(?:definitely|probably|likely)?\s*(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke)\b",
+    r"\byour\s+symptoms?\s+(?:prove|confirm|show)\s+(?:that\s+)?you\s+have\b",
 )
 
 
 UNSAFE_PRESCRIPTION_OUTPUT_PATTERNS = (
-    r"\byou\s+should\s+take\s+(?:the\s+)?[a-z][a-z-]+\b",
-    r"\byou\s+need\s+to\s+take\s+(?:the\s+)?[a-z][a-z-]+\b",
-    r"\bi\s+recommend\s+taking\s+(?:the\s+)?[a-z][a-z-]+\b",
-    r"\bstart\s+taking\s+(?:the\s+)?[a-z][a-z-]+\b",
-    r"\btake\s+(?:the\s+)?(?:amoxicillin|azithromycin|ibuprofen|paracetamol|acetaminophen|aspirin|metformin|insulin|prednisone)\b",
+    r"\byou\s+should\s+take\s+(?:amoxicillin|azithromycin|ibuprofen|paracetamol|acetaminophen|aspirin|metformin|insulin|prednisone)\b",
+    r"\byou\s+need\s+to\s+take\s+(?:amoxicillin|azithromycin|ibuprofen|paracetamol|acetaminophen|aspirin|metformin|insulin|prednisone)\b",
+    r"\bi\s+recommend\s+taking\s+(?:amoxicillin|azithromycin|ibuprofen|paracetamol|acetaminophen|aspirin|metformin|insulin|prednisone)\b",
+    r"\bstart\s+taking\s+(?:amoxicillin|azithromycin|ibuprofen|paracetamol|acetaminophen|aspirin|metformin|insulin|prednisone)\b",
+    r"\byou\s+should\s+take\s+(?:this|the)\s+(?:medicine|medication|drug)\b",
+    r"\byou\s+need\s+to\s+take\s+(?:this|the)\s+(?:medicine|medication|drug)\b",
+    r"\bstart\s+taking\s+(?:this|the)\s+(?:medicine|medication|drug)\b",
+    r"\btake\s+\d+(?:\.\d+)?\s*(?:mg|mcg|g|ml|mL)\s+(?:once|twice|three times|daily|per day)\b",
     r"\b\d+(?:\.\d+)?\s*(?:mg|mcg|g|ml|mL)\s+(?:once|twice|three times|daily|per day)\b",
-    r"\btake\b.{0,60}\b\d+(?:\.\d+)?\s*(?:mg|mcg|g|ml|mL)\b",
     r"\bincrease\s+your\s+(?:dose|dosage)\b",
     r"\bdecrease\s+your\s+(?:dose|dosage)\b",
     r"\bstop\s+taking\s+your\s+(?:medicine|medication)\b",
     r"\bstart\s+taking\s+your\s+(?:medicine|medication)\b",
+    r"\bswitch\s+your\s+(?:medicine|medication)\b",
 )
 
 
@@ -251,7 +255,7 @@ def check_safety(text: str) -> Dict[str, Optional[object]]:
 
 
 def should_redirect_immediately(text: str) -> bool:
-    """Return True when an emergency safety override is required."""
+    """Return True when emergency escalation is required."""
     result = classify_request(text)
 
     return bool(
@@ -271,7 +275,7 @@ def emergency_response() -> str:
 
 
 def serious_symptom_response() -> str:
-    """Return professional referral guidance for serious/urgent symptoms."""
+    """Return professional referral guidance for serious symptoms."""
     return (
         "These symptoms may require prompt medical evaluation. "
         "Please contact a qualified healthcare professional for assessment, "
@@ -280,7 +284,7 @@ def serious_symptom_response() -> str:
 
 
 def prescription_refusal_response() -> str:
-    """Return refusal for personalized prescription or dosage requests."""
+    """Return refusal for personalized medication requests."""
     return (
         "I can't prescribe medicines or provide personalized dosage instructions. "
         "Please consult a qualified healthcare professional or pharmacist for "
@@ -298,7 +302,7 @@ def diagnosis_refusal_response() -> str:
 
 
 def unclear_medical_response() -> str:
-    """Return safe fallback for unclear medical queries."""
+    """Return safe fallback for unclear medical questions."""
     return (
         "I can't determine the cause of your symptoms from the available "
         "information alone. I can provide general health information, but a "
@@ -316,7 +320,7 @@ def apply_safety_override(text: str) -> Optional[str]:
 
 
 def contains_unsafe_diagnosis(text: str) -> bool:
-    """Detect definitive/personalized diagnosis in generated AI output."""
+    """Detect unsafe personalized diagnostic statements in AI output."""
     normalized = _normalize(text)
     return _matches_any(
         normalized,
@@ -325,7 +329,7 @@ def contains_unsafe_diagnosis(text: str) -> bool:
 
 
 def contains_unsafe_prescription(text: str) -> bool:
-    """Detect personalized prescription/dosage advice in generated output."""
+    """Detect unsafe prescription or dosage advice in AI output."""
     normalized = _normalize(text)
     return _matches_any(
         normalized,
@@ -335,7 +339,7 @@ def contains_unsafe_prescription(text: str) -> bool:
 
 def classify_ai_output(text: str) -> str:
     """
-    Classify generated AI output.
+    Classify an AI-generated response.
 
     Returns:
         diagnosis
@@ -364,7 +368,7 @@ def validate_ai_response(text: str) -> Dict[str, object]:
 
 
 def sanitize_ai_response(text: str) -> str:
-    """Replace unsafe generated content with the appropriate safe response."""
+    """Replace unsafe AI output with a deterministic safe response."""
     category = classify_ai_output(text)
 
     if category == "diagnosis":
@@ -378,7 +382,7 @@ def sanitize_ai_response(text: str) -> str:
 
 def get_safety_response(text: str) -> Optional[str]:
     """
-    Return the deterministic input-safety response.
+    Return deterministic input-safety response.
 
     Priority:
         emergency > serious > prescription > diagnosis > unclear > normal

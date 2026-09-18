@@ -13,10 +13,10 @@ def handle_user_request(
     normal_handler: Callable[[str], str],
 ) -> str:
     """
-    Apply both input and output safety layers to every healthcare request.
+    Apply input and output safety layers to every healthcare request.
 
-    Input safety is applied before normal AI processing.
-    Output safety is applied before returning a normal AI response.
+    Input safety runs before normal AI processing.
+    Output safety runs before the AI response is returned.
     """
     input_safety_response = get_safety_response(text)
 
