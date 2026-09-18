@@ -15,7 +15,31 @@ def test_emergency_is_blocked_before_ai():
 
     assert "emergency" in response.lower()
     assert "professional medical care" in response.lower()
+    assert "qualified healthcare professional" in response.lower()
     assert ai_calls == []
+
+
+def test_emergency_variants_escalate_immediately():
+    emergency_requests = [
+        "I am gasping for air.",
+        "My face is drooping and my speech is suddenly slurred.",
+        "I have uncontrolled bleeding.",
+        "I am unresponsive.",
+    ]
+
+    for request in emergency_requests:
+        ai_calls = []
+
+        def fake_ai_handler(text: str) -> str:
+            ai_calls.append(text)
+            return "NORMAL AI RESPONSE"
+
+        response = handle_user_request(request, fake_ai_handler)
+
+        assert "medical emergency" in response.lower()
+        assert "emergency services" in response.lower()
+        assert "qualified healthcare professional" in response.lower()
+        assert ai_calls == []
 
 
 def test_serious_symptoms_are_blocked_before_ai():
@@ -64,6 +88,23 @@ def test_prescription_request_is_blocked_before_ai():
     )
 
     assert "prescribe" in response.lower()
+    assert ai_calls == []
+
+
+def test_personalized_treatment_request_is_blocked_before_ai():
+    ai_calls = []
+
+    def fake_ai_handler(text: str) -> str:
+        ai_calls.append(text)
+        return "NORMAL AI RESPONSE"
+
+    response = handle_user_request(
+        "What treatment should I follow for these symptoms?",
+        fake_ai_handler,
+    )
+
+    assert "personalized treatment plan" in response.lower()
+    assert "healthcare professional" in response.lower()
     assert ai_calls == []
 
 
@@ -135,6 +176,23 @@ def test_emergency_overrides_diagnosis_request():
     assert ai_calls == []
 
 
+def test_emergency_overrides_treatment_request():
+    ai_calls = []
+
+    def fake_ai_handler(text: str) -> str:
+        ai_calls.append(text)
+        return "NORMAL AI RESPONSE"
+
+    response = handle_user_request(
+        "I am gasping for air. What treatment should I follow?",
+        fake_ai_handler,
+    )
+
+    assert "emergency" in response.lower()
+    assert "personalized treatment" not in response.lower()
+    assert ai_calls == []
+
+
 def test_unsafe_diagnosis_generated_by_ai_is_sanitized():
     ai_calls = []
 
@@ -184,6 +242,23 @@ def test_unsafe_dosage_generated_by_ai_is_sanitized():
     assert "can't prescribe medicines" in response.lower()
     assert "500mg" not in response.lower()
     assert ai_calls == ["Give me general treatment information."]
+
+
+def test_unsafe_treatment_generated_by_ai_is_sanitized():
+    ai_calls = []
+
+    def fake_ai_handler(text: str) -> str:
+        ai_calls.append(text)
+        return "For your symptoms, you should follow this treatment."
+
+    response = handle_user_request(
+        "Explain what treatment options exist.",
+        fake_ai_handler,
+    )
+
+    assert "personalized treatment plan" in response.lower()
+    assert "follow this treatment" not in response.lower()
+    assert ai_calls == ["Explain what treatment options exist."]
 
 
 def test_safe_ai_output_is_returned():
@@ -241,6 +316,7 @@ def test_all_safety_categories_bypass_normal_ai():
         "I have severe chest pain and cannot breathe.",
         "My symptoms are getting worse quickly.",
         "Which antibiotic would be appropriate for me?",
+        "What treatment should I follow?",
         "Could this be pneumonia?",
         "I don't know what's wrong with me.",
     ]
