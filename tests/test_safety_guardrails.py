@@ -1,5 +1,6 @@
 from src.healthcare_assistant.prompts import SYSTEM_PROMPT
 from src.healthcare_assistant.safety_guardrails import (
+    apply_safety_override,
     check_safety,
     classify_request,
     diagnosis_refusal_response,
@@ -81,13 +82,46 @@ def test_normal_request_does_not_require_immediate_redirect():
     ) is False
 
 
-def test_emergency_response_directs_to_emergency_care():
+def test_safety_override_returns_emergency_response():
+    response = apply_safety_override(
+        "I have severe chest pain and cannot breathe."
+    )
+
+    assert response is not None
+    assert "immediate" in response.lower()
+    assert "professional medical care" in response.lower()
+
+
+def test_safety_override_does_not_trigger_for_normal_request():
+    response = apply_safety_override(
+        "What are common symptoms of seasonal flu?"
+    )
+
+    assert response is None
+
+
+def test_safety_override_does_not_trigger_for_diagnosis_request():
+    response = apply_safety_override(
+        "Do I have diabetes?"
+    )
+
+    assert response is None
+
+
+def test_safety_override_does_not_trigger_for_prescription_request():
+    response = apply_safety_override(
+        "What antibiotic should I take?"
+    )
+
+    assert response is None
+
+
+def test_emergency_response_directs_to_immediate_professional_care():
     response = emergency_response()
 
-    assert "immediate medical attention" in response.lower()
-    assert "emergency medical care" in response.lower()
-    assert "diagnose" in response.lower()
-    assert "treat" in response.lower()
+    assert "immediate" in response.lower()
+    assert "professional medical care" in response.lower()
+    assert "emergency services" in response.lower()
 
 
 def test_emergency_response_does_not_make_a_diagnosis():
@@ -96,6 +130,14 @@ def test_emergency_response_does_not_make_a_diagnosis():
     assert "you have" not in response
     assert "definitely" not in response
     assert "heart attack" not in response
+
+
+def test_emergency_response_does_not_provide_prescription_advice():
+    response = emergency_response().lower()
+
+    assert "take " not in response
+    assert "dose" not in response
+    assert "dosage" not in response
 
 
 def test_prescription_refusal_is_explicit():
@@ -119,7 +161,7 @@ def test_get_safety_response_for_emergency():
     )
 
     assert response is not None
-    assert "emergency medical care" in response.lower()
+    assert "emergency services" in response.lower()
 
 
 def test_get_safety_response_for_prescription():
@@ -149,12 +191,20 @@ def test_normal_request_has_no_refusal_response():
     )
 
 
-def test_system_prompt_is_strictly_non_diagnostic():
+def test_system_prompt_prevents_autonomous_diagnosis():
     prompt = SYSTEM_PROMPT.lower()
 
-    assert "never provide a definitive medical diagnosis" in prompt
-    assert "never confirm that a user has a specific disease" in prompt
-    assert "do not present a differential diagnosis as a confirmed diagnosis" in prompt
+    assert "never independently diagnose a user" in prompt
+    assert "never confirm that a user has a disease" in prompt
+    assert "never make a medical diagnosis" in prompt
+
+
+def test_system_prompt_prevents_autonomous_prescription():
+    prompt = SYSTEM_PROMPT.lower()
+
+    assert "never prescribe medicines" in prompt
+    assert "never autonomously recommend a prescription medicine" in prompt
+    assert "never provide personalized dosage instructions" in prompt
 
 
 def test_system_prompt_contains_medical_disclaimer():
@@ -165,28 +215,28 @@ def test_system_prompt_contains_medical_disclaimer():
     assert "does not replace" in prompt
 
 
-def test_system_prompt_contains_referral_guidelines():
+def test_system_prompt_contains_safety_override():
     prompt = SYSTEM_PROMPT.lower()
 
-    assert "referral guidelines" in prompt
-    assert "professional medical evaluation" in prompt
-    assert "urgent or emergency medical care immediately" in prompt
-
-
-def test_system_prompt_contains_instant_emergency_redirect():
-    prompt = SYSTEM_PROMPT.lower()
-
-    assert "instant refusal / redirect logic" in prompt
-    assert "immediately redirect the user" in prompt
+    assert "safety override" in prompt
+    assert "immediate safety override" in prompt
     assert "do not continue normal conversational healthcare flow" in prompt
 
 
 def test_system_prompt_defines_emergency_priority():
     prompt = SYSTEM_PROMPT.lower()
 
-    assert "1. emergency / immediate safety redirect" in prompt
+    assert "1. emergency / immediate safety override" in prompt
     assert "2. prescription or medication-change refusal" in prompt
     assert "3. diagnosis refusal" in prompt
+
+
+def test_system_prompt_contains_referral_guidelines():
+    prompt = SYSTEM_PROMPT.lower()
+
+    assert "referral guidelines" in prompt
+    assert "professional medical evaluation" in prompt
+    assert "immediate professional medical care" in prompt
 
 
 def test_system_prompt_prevents_invented_patient_information():
@@ -219,3 +269,57 @@ def test_additional_emergency_patterns_are_detected():
 
         assert result["category"] == "emergency"
         assert result["requires_immediate_redirect"] is True
+
+
+def test_natural_language_emergency_variant_is_detected():
+    result = classify_request(
+        "I can't catch my breath and my chest hurts badly."
+    )
+
+    assert result["category"] == "emergency"
+    assert result["requires_immediate_redirect"] is True
+
+
+def test_natural_language_diagnosis_variant_is_detected():
+    result = classify_request(
+        "Could this be pneumonia?"
+    )
+
+    assert result["category"] == "diagnosis"
+    assert result["is_diagnosis"] is True
+
+
+def test_natural_language_prescription_variant_is_detected():
+    result = classify_request(
+        "Which antibiotic would be appropriate for me?"
+    )
+
+    assert result["category"] == "prescription"
+    assert result["is_prescription"] is True
+
+
+def test_natural_language_emergency_gets_deterministic_response():
+    response = get_safety_response(
+        "I'm having trouble breathing right now."
+    )
+
+    assert response is not None
+    assert "medical emergency" in response.lower()
+
+
+def test_natural_language_diagnosis_gets_deterministic_response():
+    response = get_safety_response(
+        "Could these symptoms mean I have pneumonia?"
+    )
+
+    assert response is not None
+    assert "diagnosis" in response.lower()
+
+
+def test_natural_language_prescription_gets_deterministic_response():
+    response = get_safety_response(
+        "Which medicine would be best for me?"
+    )
+
+    assert response is not None
+    assert "prescribe" in response.lower()
