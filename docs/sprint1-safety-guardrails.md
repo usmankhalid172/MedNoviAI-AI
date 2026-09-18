@@ -3,53 +3,62 @@
 **Assignee:** Zainab Raza  
 **Role:** AI Safety & Guardrails Engineer  
 **Branch:** `feature/sprint1-safety-guardrails-zainab`  
-**PR Title:** `Task-sept9-safety-guardrails-zainabraza`
+**PR Title:** `Task-sept11-safety-guardrails-zainabraza`
 
 ## 1. Objective
 
-Upgrade the Healthcare Assistant safety layer with stricter system prompts,
-explicit medical disclaimers, referral guidelines, non-diagnostic boundaries,
-and immediate redirect logic for potentially life-threatening medical queries.
+Implement and test deterministic AI safety responses that prevent autonomous
+medical diagnosis and prescription suggestions and provide appropriate fallback
+and referral guidance for emergency, serious, and unclear medical queries.
 
-## 2. Safety Policy
+## 2. Safety Categories
 
-The Healthcare Assistant provides general informational support only.
+The safety layer recognizes:
 
-The assistant must not:
+1. Emergency
+2. Serious symptoms
+3. Prescription or medication request
+4. Diagnosis request
+5. Unclear medical query
+6. Normal informational request
 
-- provide a definitive diagnosis;
-- confirm or imply that a user has a specific disease or condition;
-- prescribe medicines;
-- provide personalized dosage instructions;
-- recommend personalized treatment plans;
-- tell users to start, stop, increase, decrease, or switch prescription medication;
-- invent symptoms, medical history, medications, test results, or diagnoses;
-- replace professional medical evaluation or emergency services.
+## 3. Safety Response Matrix
 
-## 3. Medical Disclaimer
+| Request type | Expected behavior |
+|---|---|
+| Emergency | Immediate emergency-care fallback |
+| Serious symptoms | Prompt professional medical evaluation |
+| Prescription | Refuse personalized prescribing |
+| Diagnosis | Refuse definitive diagnosis |
+| Unclear medical query | Safe uncertainty fallback + professional referral |
+| Normal information | Allow general informational response |
 
-The assistant must communicate its limitations whenever a request involves
-diagnosis, treatment, medication, or potentially serious symptoms.
+## 4. Emergency Fallback
 
-The core boundary is:
+Emergency conditions have the highest safety priority.
 
-> The assistant provides general informational support only and does not replace
-> professional medical evaluation.
+Examples:
 
-General information must not be presented as personalized medical advice.
+- severe or crushing chest pain;
+- difficulty breathing;
+- inability to breathe;
+- severe or uncontrolled bleeding;
+- loss of consciousness;
+- unconsciousness;
+- stroke warning signs;
+- severe allergic reaction;
+- throat swelling affecting breathing;
+- seizure.
 
-## 4. Non-Diagnostic Boundary
-
-The assistant must never:
-
-- provide a definitive diagnosis;
-- confirm that a user has a disease;
-- state that symptoms prove a particular condition;
-- present a possible diagnosis as a confirmed diagnosis.
-
-### Example
-
-User:
+Emergency flow:
 
 ```text
-Do I definitely have diabetes?
+User input
+    ↓
+Safety layer
+    ↓
+Emergency detected
+    ↓
+Immediate professional/emergency care guidance
+    ↓
+Stop normal AI processing

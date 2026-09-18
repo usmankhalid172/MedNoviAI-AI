@@ -8,6 +8,8 @@ from src.healthcare_assistant.safety_guardrails import (
     get_safety_response,
     prescription_refusal_response,
     should_redirect_immediately,
+    serious_symptom_response,
+    unclear_medical_response,
 )
 
 
@@ -223,13 +225,14 @@ def test_system_prompt_contains_safety_override():
     assert "do not continue normal conversational healthcare flow" in prompt
 
 
-def test_system_prompt_defines_emergency_priority():
+def test_system_prompt_defines_safety_priority():
     prompt = SYSTEM_PROMPT.lower()
 
     assert "1. emergency / immediate safety override" in prompt
-    assert "2. prescription or medication-change refusal" in prompt
-    assert "3. diagnosis refusal" in prompt
-
+    assert "2. serious symptom fallback" in prompt
+    assert "3. prescription or medication-change refusal" in prompt
+    assert "4. diagnosis refusal" in prompt
+    assert "5. unclear medical-query fallback" in prompt
 
 def test_system_prompt_contains_referral_guidelines():
     prompt = SYSTEM_PROMPT.lower()
@@ -323,3 +326,117 @@ def test_natural_language_prescription_gets_deterministic_response():
 
     assert response is not None
     assert "prescribe" in response.lower()
+def test_serious_worsening_symptoms_are_classified():
+    result = classify_request(
+        "My symptoms are getting worse quickly."
+    )
+
+    assert result["category"] == "serious"
+    assert result["is_serious"] is True
+    assert result["is_emergency"] is False
+
+
+def test_serious_persistent_fever_is_classified():
+    result = classify_request(
+        "I have persistent severe fever."
+    )
+
+    assert result["category"] == "serious"
+    assert result["is_serious"] is True
+
+
+def test_serious_symptoms_get_referral_response():
+    response = get_safety_response(
+        "My symptoms are getting worse quickly."
+    )
+
+    assert response is not None
+    assert "medical evaluation" in response.lower()
+    assert "healthcare professional" in response.lower()
+
+
+def test_serious_response_does_not_make_a_diagnosis():
+    response = serious_symptom_response().lower()
+
+    assert "you have" not in response
+    assert "definitely" not in response
+
+
+def test_unclear_medical_query_is_classified():
+    result = classify_request(
+        "I don't know what's wrong with me."
+    )
+
+    assert result["category"] == "unclear"
+    assert result["is_unclear"] is True
+    assert result["is_diagnosis"] is False
+
+
+def test_unclear_query_gets_safe_fallback():
+    response = get_safety_response(
+        "I feel strange and don't know what is causing this."
+    )
+
+    assert response is not None
+    assert "can't determine the cause" in response.lower()
+    assert "healthcare professional" in response.lower()
+
+
+def test_unclear_response_does_not_make_a_diagnosis():
+    response = unclear_medical_response().lower()
+
+    assert "you have" not in response
+    assert "definitely" not in response
+    assert "diagnosis" not in response
+
+
+def test_emergency_has_priority_over_serious_symptoms():
+    result = classify_request(
+        "My symptoms are getting worse and I have severe chest pain."
+    )
+
+    assert result["category"] == "emergency"
+    assert result["is_emergency"] is True
+    assert result["is_serious"] is False
+
+
+def test_serious_symptoms_have_priority_over_prescription_request():
+    result = classify_request(
+        "My symptoms are getting worse. What medicine should I take?"
+    )
+
+    assert result["category"] == "serious"
+    assert result["is_serious"] is True
+    assert result["is_prescription"] is False
+
+
+def test_normal_information_request_remains_normal():
+    result = classify_request(
+        "What are common symptoms of seasonal flu?"
+    )
+
+    assert result["category"] == "normal"
+    assert result["is_serious"] is False
+    assert result["is_unclear"] is False
+
+
+def test_system_prompt_defines_serious_symptom_fallback():
+    prompt = SYSTEM_PROMPT.lower()
+
+    assert "serious-symptom fallback" in prompt
+    assert "recommend prompt evaluation" in prompt
+
+
+def test_system_prompt_defines_unclear_query_fallback():
+    prompt = SYSTEM_PROMPT.lower()
+
+    assert "unclear-query fallback" in prompt
+    assert "do not guess" in prompt
+
+
+def test_system_prompt_defines_safety_fallback_priority():
+    prompt = SYSTEM_PROMPT.lower()
+
+    assert "1. emergency / immediate safety override" in prompt
+    assert "2. serious symptom fallback" in prompt
+    assert "5. unclear medical-query fallback" in prompt
