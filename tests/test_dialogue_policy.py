@@ -358,3 +358,68 @@ def test_patient_record_rejects_incomplete_intake():
 
     with pytest.raises(ValueError):
         policy.get_patient_record()
+
+def test_next_question_returns_symptoms_when_intake_is_empty():
+    policy = PatientDialoguePolicy()
+
+    assert policy.get_next_question() == (
+        "What symptoms are you experiencing?"
+    )
+
+
+def test_next_question_returns_onset_when_symptoms_are_collected():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+
+    assert policy.get_next_question() == (
+        "When did your symptoms start?"
+    )
+
+
+def test_next_question_returns_age_when_symptoms_and_onset_are_collected():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+    policy.process_message("Since yesterday.")
+
+    assert policy.get_next_question() == (
+        "What is your age group?"
+    )
+
+
+def test_next_question_returns_none_when_intake_is_complete():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+    policy.process_message("Since yesterday.")
+    policy.process_message("I am an adult.")
+
+    assert policy.get_next_question() is None
+
+def test_process_message_uses_dialogue_policy_next_question():
+    policy = PatientDialoguePolicy()
+
+    original_process_message = policy.intake.process_message
+
+    def fake_process_message(message):
+        result = original_process_message(message)
+
+        # Change only the collector response so we can verify
+        # that DialoguePolicy selects its own next question.
+        result.response = "Collector response"
+
+        return result
+
+    policy.intake.process_message = fake_process_message
+
+    result = policy.process_message("I have a headache.")
+
+    assert result.response == "When did your symptoms start?"
+    assert result.response != "Collector response"
+    assert result.missing_fields == [
+        "symptom_onset",
+        "age_group",
+    ]
+    assert result.ready is False
+    assert result.handoff is False
