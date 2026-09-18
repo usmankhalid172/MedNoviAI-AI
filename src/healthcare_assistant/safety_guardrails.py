@@ -5,7 +5,7 @@ from typing import Dict, Optional
 
 
 # Input safety priority:
-# emergency > serious > prescription > diagnosis > unclear > normal
+# emergency > serious/urgent > prescription > diagnosis > unclear > normal
 
 EMERGENCY_PATTERNS = (
     r"\b(?:severe|crushing|intense|very bad)\s+(?:chest\s+)?pain\b",
@@ -42,6 +42,7 @@ SERIOUS_SYMPTOM_PATTERNS = (
     r"\bsevere\s+weakness\b",
     r"\bsevere\s+pain\s+(?:that\s+)?(?:isn't|is\s+not)\s+improving\b",
     r"\bpain\s+(?:that\s+)?(?:isn't|is\s+not)\s+improving\b",
+    r"\b(?:urgent|prompt)\s+medical\s+(?:attention|evaluation)\b",
 )
 
 
@@ -103,9 +104,6 @@ UNCLEAR_MEDICAL_PATTERNS = (
 )
 
 
-# Output validation:
-# These patterns look for personalized, unsafe conclusions in AI-generated text.
-
 UNSAFE_DIAGNOSIS_OUTPUT_PATTERNS = (
     r"\bbased\s+on\s+(?:your|the)\s+symptoms?.{0,80}\byou\s+(?:definitely\s+)?have\b",
     r"\bfrom\s+what\s+you\s+described.{0,80}\byou\s+(?:definitely\s+)?have\b",
@@ -139,7 +137,7 @@ def _normalize(text: str) -> str:
 
 
 def _matches_any(text: str, patterns: tuple[str, ...]) -> bool:
-    """Return True when at least one regex pattern matches."""
+    """Return True if any configured regex matches."""
     return any(re.search(pattern, text) for pattern in patterns)
 
 
@@ -185,7 +183,7 @@ def classify_request(text: str) -> Dict[str, Optional[object]]:
             "is_diagnosis": False,
             "is_unclear": False,
             "requires_immediate_redirect": False,
-            "reason": "Potentially serious or worsening symptoms detected.",
+            "reason": "Potentially serious or urgent symptoms detected.",
         }
 
     if _matches_any(normalized, PRESCRIPTION_PATTERNS):
@@ -237,7 +235,7 @@ def classify_request(text: str) -> Dict[str, Optional[object]]:
 
 
 def check_safety(text: str) -> Dict[str, Optional[object]]:
-    """Return safety classification and boundary metadata."""
+    """Return safety classification and metadata."""
     result = classify_request(text)
 
     return {
@@ -263,7 +261,7 @@ def should_redirect_immediately(text: str) -> bool:
 
 
 def emergency_response() -> str:
-    """Return immediate professional/emergency care guidance."""
+    """Return immediate emergency-care guidance."""
     return (
         "This may be a medical emergency and requires immediate attention. "
         "Please seek immediate professional medical care or contact local "
@@ -273,7 +271,7 @@ def emergency_response() -> str:
 
 
 def serious_symptom_response() -> str:
-    """Return referral guidance for potentially serious symptoms."""
+    """Return professional referral guidance for serious/urgent symptoms."""
     return (
         "These symptoms may require prompt medical evaluation. "
         "Please contact a qualified healthcare professional for assessment, "
@@ -282,7 +280,7 @@ def serious_symptom_response() -> str:
 
 
 def prescription_refusal_response() -> str:
-    """Return deterministic refusal for personalized medication requests."""
+    """Return refusal for personalized prescription or dosage requests."""
     return (
         "I can't prescribe medicines or provide personalized dosage instructions. "
         "Please consult a qualified healthcare professional or pharmacist for "
@@ -291,7 +289,7 @@ def prescription_refusal_response() -> str:
 
 
 def diagnosis_refusal_response() -> str:
-    """Return deterministic refusal for diagnosis requests."""
+    """Return refusal for definitive diagnosis requests."""
     return (
         "I can't provide a definitive medical diagnosis. "
         "I can provide general health information, but a qualified healthcare "
@@ -300,7 +298,7 @@ def diagnosis_refusal_response() -> str:
 
 
 def unclear_medical_response() -> str:
-    """Return safe fallback for unclear medical questions."""
+    """Return safe fallback for unclear medical queries."""
     return (
         "I can't determine the cause of your symptoms from the available "
         "information alone. I can provide general health information, but a "
@@ -310,7 +308,7 @@ def unclear_medical_response() -> str:
 
 
 def apply_safety_override(text: str) -> Optional[str]:
-    """Return the immediate emergency response when an emergency is detected."""
+    """Return emergency response when immediate escalation is required."""
     if should_redirect_immediately(text):
         return emergency_response()
 
@@ -318,25 +316,31 @@ def apply_safety_override(text: str) -> Optional[str]:
 
 
 def contains_unsafe_diagnosis(text: str) -> bool:
-    """Detect personalized diagnostic statements in generated AI output."""
+    """Detect definitive/personalized diagnosis in generated AI output."""
     normalized = _normalize(text)
-    return _matches_any(normalized, UNSAFE_DIAGNOSIS_OUTPUT_PATTERNS)
+    return _matches_any(
+        normalized,
+        UNSAFE_DIAGNOSIS_OUTPUT_PATTERNS,
+    )
 
 
 def contains_unsafe_prescription(text: str) -> bool:
-    """Detect personalized prescription or dosage advice in generated output."""
+    """Detect personalized prescription/dosage advice in generated output."""
     normalized = _normalize(text)
-    return _matches_any(normalized, UNSAFE_PRESCRIPTION_OUTPUT_PATTERNS)
+    return _matches_any(
+        normalized,
+        UNSAFE_PRESCRIPTION_OUTPUT_PATTERNS,
+    )
 
 
 def classify_ai_output(text: str) -> str:
     """
-    Classify generated output for response-level safety validation.
+    Classify generated AI output.
 
     Returns:
-        "diagnosis"    unsafe personalized diagnosis
-        "prescription" unsafe personalized medication advice
-        "safe"         no detected output violation
+        diagnosis
+        prescription
+        safe
     """
     if contains_unsafe_diagnosis(text):
         return "diagnosis"
@@ -348,7 +352,7 @@ def classify_ai_output(text: str) -> str:
 
 
 def validate_ai_response(text: str) -> Dict[str, object]:
-    """Return deterministic validation metadata for an AI-generated response."""
+    """Validate an AI-generated response against output safety rules."""
     category = classify_ai_output(text)
 
     return {
@@ -360,11 +364,7 @@ def validate_ai_response(text: str) -> Dict[str, object]:
 
 
 def sanitize_ai_response(text: str) -> str:
-    """
-    Replace unsafe generated responses with the appropriate safety response.
-
-    Safe responses are returned unchanged.
-    """
+    """Replace unsafe generated content with the appropriate safe response."""
     category = classify_ai_output(text)
 
     if category == "diagnosis":
@@ -378,7 +378,7 @@ def sanitize_ai_response(text: str) -> str:
 
 def get_safety_response(text: str) -> Optional[str]:
     """
-    Return the deterministic response required by the input safety layer.
+    Return the deterministic input-safety response.
 
     Priority:
         emergency > serious > prescription > diagnosis > unclear > normal

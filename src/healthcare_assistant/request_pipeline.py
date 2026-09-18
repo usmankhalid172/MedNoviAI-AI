@@ -13,15 +13,10 @@ def handle_user_request(
     normal_handler: Callable[[str], str],
 ) -> str:
     """
-    Route a healthcare request through input and output safety layers.
+    Apply both input and output safety layers to every healthcare request.
 
-    Input safety:
-        Emergency, serious, prescription, diagnosis, and unclear requests
-        receive deterministic safety handling before normal AI processing.
-
-    Output safety:
-        A normal AI response is validated before it is returned. Unsafe
-        diagnostic or prescription content is replaced with a safe response.
+    Input safety is applied before normal AI processing.
+    Output safety is applied before returning a normal AI response.
     """
     input_safety_response = get_safety_response(text)
 

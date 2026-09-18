@@ -3,41 +3,57 @@
 **Assignee:** Zainab Raza  
 **Role:** AI Safety & Guardrails Engineer  
 **Branch:** `feature/sprint1-safety-guardrails-zainab`  
-**PR Title:** `Task-sept11-safety-guardrails-zainabraza`
+**PR Title:** `Task-sept13-safety-guardrails-zainabraza`
 
 ## 1. Objective
 
-Implement and test deterministic AI safety responses that prevent autonomous
-medical diagnosis and prescription suggestions and provide appropriate fallback
-and referral guidance for emergency, serious, and unclear medical queries.
+Verify and lock in the Healthcare Assistant safety policy so that the AI acts
+strictly as an informational assistant and does not autonomously diagnose,
+prescribe medication, or make clinical decisions.
 
-## 2. Safety Categories
+The safety layer also provides deterministic escalation for urgent and
+emergency medical conditions.
 
-The safety layer recognizes:
+## 2. Final Assistant Policy
+
+The Healthcare Assistant:
+
+- provides general informational healthcare support;
+- does not act as a doctor;
+- does not independently diagnose users;
+- does not prescribe medicines;
+- does not provide personalized dosage instructions;
+- does not make individual treatment decisions;
+- does not replace professional medical care.
+
+## 3. Input Safety Policy
+
+Every incoming healthcare request passes through the safety layer before
+normal AI processing.
+
+The input categories are:
 
 1. Emergency
-2. Serious symptoms
+2. Serious or urgent symptoms
 3. Prescription or medication request
 4. Diagnosis request
 5. Unclear medical query
 6. Normal informational request
 
-## 3. Safety Response Matrix
+## 4. Safety Escalation Matrix
 
-| Request type | Expected behavior |
+| Condition | Required behavior |
 |---|---|
-| Emergency | Immediate emergency-care fallback |
-| Serious symptoms | Prompt professional medical evaluation |
-| Prescription | Refuse personalized prescribing |
-| Diagnosis | Refuse definitive diagnosis |
-| Unclear medical query | Safe uncertainty fallback + professional referral |
-| Normal information | Allow general informational response |
+| Emergency | Immediate professional/emergency-care guidance |
+| Serious / urgent symptoms | Prompt professional medical evaluation |
+| Prescription request | Refuse personalized prescribing |
+| Diagnosis request | Refuse definitive diagnosis |
+| Unclear medical concern | Safe uncertainty fallback + referral |
+| Normal informational query | General informational response |
 
-## 4. Emergency Fallback
+## 5. Emergency Escalation
 
-Emergency conditions have the highest safety priority.
-
-Examples:
+Potential emergency indicators include:
 
 - severe or crushing chest pain;
 - difficulty breathing;
@@ -53,7 +69,7 @@ Examples:
 Emergency flow:
 
 ```text
-User input
+User request
     ↓
 Safety layer
     ↓

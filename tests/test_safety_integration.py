@@ -50,6 +50,39 @@ def test_prescription_request_is_blocked_before_normal_ai_processing():
     assert ai_calls == []
 
 
+def test_serious_request_is_blocked_before_normal_ai_processing():
+    ai_calls = []
+
+    def fake_ai_handler(text: str) -> str:
+        ai_calls.append(text)
+        return "NORMAL AI RESPONSE"
+
+    response = handle_user_request(
+        "My symptoms are getting worse quickly.",
+        fake_ai_handler,
+    )
+
+    assert "medical evaluation" in response.lower()
+    assert "healthcare professional" in response.lower()
+    assert ai_calls == []
+
+
+def test_unclear_request_is_blocked_before_normal_ai_processing():
+    ai_calls = []
+
+    def fake_ai_handler(text: str) -> str:
+        ai_calls.append(text)
+        return "NORMAL AI RESPONSE"
+
+    response = handle_user_request(
+        "I feel strange and don't know what is causing this.",
+        fake_ai_handler,
+    )
+
+    assert "can't determine the cause" in response.lower()
+    assert ai_calls == []
+
+
 def test_normal_request_reaches_normal_ai_processing():
     ai_calls = []
 
@@ -82,39 +115,6 @@ def test_emergency_has_priority_over_prescription_in_integration_flow():
 
     assert "emergency" in response.lower()
     assert "prescribe" not in response.lower()
-    assert ai_calls == []
-
-
-def test_serious_request_is_blocked_before_normal_ai_processing():
-    ai_calls = []
-
-    def fake_ai_handler(text: str) -> str:
-        ai_calls.append(text)
-        return "NORMAL AI RESPONSE"
-
-    response = handle_user_request(
-        "My symptoms are getting worse quickly.",
-        fake_ai_handler,
-    )
-
-    assert "medical evaluation" in response.lower()
-    assert "healthcare professional" in response.lower()
-    assert ai_calls == []
-
-
-def test_unclear_request_is_blocked_before_normal_ai_processing():
-    ai_calls = []
-
-    def fake_ai_handler(text: str) -> str:
-        ai_calls.append(text)
-        return "NORMAL AI RESPONSE"
-
-    response = handle_user_request(
-        "I feel strange and don't know what is causing this.",
-        fake_ai_handler,
-    )
-
-    assert "can't determine the cause" in response.lower()
     assert ai_calls == []
 
 
@@ -211,3 +211,25 @@ def test_safe_ai_output_is_returned():
         "Flu commonly causes fever, cough, fatigue, and body aches."
     )
     assert ai_calls == ["What are common flu symptoms?"]
+
+
+def test_uncertain_non_diagnostic_ai_output_is_allowed():
+    ai_calls = []
+
+    def fake_ai_handler(text: str) -> str:
+        ai_calls.append(text)
+        return (
+            "These symptoms can occur with several different conditions. "
+            "A healthcare professional can evaluate the cause."
+        )
+
+    response = handle_user_request(
+        "Can you explain these symptoms?",
+        fake_ai_handler,
+    )
+
+    assert response == (
+        "These symptoms can occur with several different conditions. "
+        "A healthcare professional can evaluate the cause."
+    )
+    assert ai_calls == ["Can you explain these symptoms?"]
