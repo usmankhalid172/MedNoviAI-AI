@@ -1,3 +1,5 @@
+import pytest
+
 from src.appointment_assistance.patient_intake import (
     PatientIntakeCollector,
 )
@@ -510,4 +512,149 @@ def test_structured_patient_data_includes_optional_information():
         "age_group": "adult",
         "secondary_history": "History of migraine",
         "additional_details": "Pain is worse in the morning",
+    }
+
+    # ---------------------------------------------------------
+# Sep 13: Finalized multi-turn intake and backend handoff
+# ---------------------------------------------------------
+
+
+def test_short_follow_up_answer_is_used_for_symptom_onset():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache.")
+
+    result = collector.process_message("Yesterday")
+
+    assert result.ready is False
+    assert result.missing_fields == ["age_group"]
+    assert collector.info.symptom_onset == "Yesterday"
+
+
+def test_short_follow_up_answer_is_used_for_age_group():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache.")
+    collector.process_message("Yesterday")
+
+    result = collector.process_message("Adult")
+
+    assert result.ready is True
+    assert result.handoff is True
+    assert collector.info.age_group == "adult"
+
+
+def test_numeric_follow_up_answer_is_converted_to_age_group():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache.")
+    collector.process_message("Two days ago.")
+
+    result = collector.process_message("22")
+
+    assert result.ready is True
+    assert result.handoff is True
+    assert collector.info.age_group == "adult"
+
+
+def test_follow_up_question_changes_after_each_collected_field():
+    collector = PatientIntakeCollector()
+
+    result = collector.process_message("I have a fever.")
+
+    assert result.response == "When did your symptoms start?"
+
+    result = collector.process_message("Since yesterday.")
+
+    assert result.response == "What is your age group?"
+
+    result = collector.process_message("I am an adult.")
+
+    assert result.ready is True
+    assert result.response == (
+        "Thank you. I have collected the required patient "
+        "information. The information can now be passed to "
+        "the recommendation module."
+    )
+
+
+def test_backend_record_returns_standardized_storage_structure():
+    collector = PatientIntakeCollector()
+
+    collector.update(
+        symptoms="headache",
+        symptom_onset="since yesterday",
+        age_group="adult",
+    )
+
+    record = collector.get_backend_record()
+
+    assert record == {
+        "primary_complaint": "headache",
+        "symptom_onset": "since yesterday",
+        "age_group": "adult",
+        "secondary_history": None,
+        "additional_details": None,
+    }
+
+
+def test_backend_record_includes_optional_information():
+    collector = PatientIntakeCollector()
+
+    collector.update(
+        symptoms="headache",
+        symptom_onset="since yesterday",
+        age_group="adult",
+        secondary_history="History of migraine",
+        additional_details="Pain is worse at night",
+    )
+
+    assert collector.get_backend_record() == {
+        "primary_complaint": "headache",
+        "symptom_onset": "since yesterday",
+        "age_group": "adult",
+        "secondary_history": "History of migraine",
+        "additional_details": "Pain is worse at night",
+    }
+
+
+def test_backend_record_rejects_incomplete_intake():
+    collector = PatientIntakeCollector()
+
+    collector.update(symptoms="headache")
+
+    with pytest.raises(ValueError):
+        collector.get_backend_record()
+
+
+def test_completed_process_message_returns_backend_record():
+    collector = PatientIntakeCollector()
+
+    result = collector.process_message(
+        "I have a headache. Since yesterday. I am an adult."
+    )
+
+    assert result.ready is True
+    assert result.handoff is True
+
+    assert result.context == collector.get_backend_record()
+
+
+def test_multi_turn_data_is_preserved_for_backend_handoff():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a cough.")
+    collector.process_message("Two days ago.")
+
+    result = collector.process_message("I'm 22.")
+
+    assert result.ready is True
+    assert result.handoff is True
+
+    assert result.context == {
+        "primary_complaint": "a cough",
+        "symptom_onset": "Two days ago",
+        "age_group": "adult",
+        "secondary_history": None,
+        "additional_details": None,
     }

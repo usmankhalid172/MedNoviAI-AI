@@ -3,6 +3,9 @@ import pytest
 from src.appointment_assistance.dialogue_policy import (
     PatientDialoguePolicy,
 )
+from src.appointment_assistance.patient_intake import (
+    PatientIntakeCollector,
+)
 
 
 def test_dialogue_policy_starts_with_all_fields_missing():
@@ -133,6 +136,7 @@ def test_policy_does_not_handoff_when_information_is_incomplete():
     assert result.ready is False
     assert result.handoff is False
     assert result.context is None
+    assert result.patient_record is None
     assert result.missing_fields == ["age_group"]
 
 
@@ -289,3 +293,133 @@ def test_non_string_message_is_rejected():
 
     with pytest.raises(ValueError):
         policy.process_message(None)
+
+
+# ---------------------------------------------------------
+# Integration tests for PatientDialoguePolicy + PatientIntakeCollector
+# ---------------------------------------------------------
+
+
+def test_dialogue_policy_uses_patient_intake_collector():
+    policy = PatientDialoguePolicy()
+
+    assert isinstance(policy.intake, PatientIntakeCollector)
+
+
+def test_dialogue_policy_state_comes_from_patient_intake():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+
+    assert policy.state.symptoms == "a headache"
+    assert policy.intake.info.symptoms == "a headache"
+
+
+def test_completed_dialogue_provides_structured_patient_record():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+    policy.process_message("Since yesterday.")
+
+    result = policy.process_message("I am an adult.")
+
+    assert result.ready is True
+    assert result.handoff is True
+
+    assert result.patient_record == {
+        "primary_complaint": "a headache",
+        "symptom_onset": "Since yesterday",
+        "age_group": "adult",
+        "secondary_history": None,
+        "additional_details": None,
+    }
+
+
+def test_patient_record_can_be_retrieved_after_handoff():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message(
+        "I have a fever. Since yesterday. I am an adult."
+    )
+
+    assert policy.get_patient_record() == {
+        "primary_complaint": "a fever",
+        "symptom_onset": "Since yesterday",
+        "age_group": "adult",
+        "secondary_history": None,
+        "additional_details": None,
+    }
+
+
+def test_patient_record_rejects_incomplete_intake():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+
+    with pytest.raises(ValueError):
+        policy.get_patient_record()
+
+def test_next_question_returns_symptoms_when_intake_is_empty():
+    policy = PatientDialoguePolicy()
+
+    assert policy.get_next_question() == (
+        "What symptoms are you experiencing?"
+    )
+
+
+def test_next_question_returns_onset_when_symptoms_are_collected():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+
+    assert policy.get_next_question() == (
+        "When did your symptoms start?"
+    )
+
+
+def test_next_question_returns_age_when_symptoms_and_onset_are_collected():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+    policy.process_message("Since yesterday.")
+
+    assert policy.get_next_question() == (
+        "What is your age group?"
+    )
+
+
+def test_next_question_returns_none_when_intake_is_complete():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+    policy.process_message("Since yesterday.")
+    policy.process_message("I am an adult.")
+
+    assert policy.get_next_question() is None
+
+def test_process_message_uses_dialogue_policy_next_question():
+    policy = PatientDialoguePolicy()
+
+    original_process_message = policy.intake.process_message
+
+    def fake_process_message(message):
+        result = original_process_message(message)
+
+        # Change only the collector response so we can verify
+        # that DialoguePolicy selects its own next question.
+        result.response = "Collector response"
+
+        return result
+
+    policy.intake.process_message = fake_process_message
+
+    result = policy.process_message("I have a headache.")
+
+    assert result.response == "When did your symptoms start?"
+    assert result.response != "Collector response"
+    assert result.missing_fields == [
+        "symptom_onset",
+        "age_group",
+    ]
+    assert result.ready is False
+    assert result.handoff is False
