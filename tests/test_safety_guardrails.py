@@ -2,14 +2,19 @@ from src.healthcare_assistant.prompts import SYSTEM_PROMPT
 from src.healthcare_assistant.safety_guardrails import (
     apply_safety_override,
     check_safety,
+    classify_ai_output,
     classify_request,
+    contains_unsafe_diagnosis,
+    contains_unsafe_prescription,
     diagnosis_refusal_response,
     emergency_response,
     get_safety_response,
     prescription_refusal_response,
-    should_redirect_immediately,
+    sanitize_ai_response,
     serious_symptom_response,
+    should_redirect_immediately,
     unclear_medical_response,
+    validate_ai_response,
 )
 
 
@@ -234,6 +239,7 @@ def test_system_prompt_defines_safety_priority():
     assert "4. diagnosis refusal" in prompt
     assert "5. unclear medical-query fallback" in prompt
 
+
 def test_system_prompt_contains_referral_guidelines():
     prompt = SYSTEM_PROMPT.lower()
 
@@ -326,6 +332,8 @@ def test_natural_language_prescription_gets_deterministic_response():
 
     assert response is not None
     assert "prescribe" in response.lower()
+
+
 def test_serious_worsening_symptoms_are_classified():
     result = classify_request(
         "My symptoms are getting worse quickly."
@@ -434,9 +442,73 @@ def test_system_prompt_defines_unclear_query_fallback():
     assert "do not guess" in prompt
 
 
-def test_system_prompt_defines_safety_fallback_priority():
+def test_system_prompt_defines_output_safety():
     prompt = SYSTEM_PROMPT.lower()
 
-    assert "1. emergency / immediate safety override" in prompt
-    assert "2. serious symptom fallback" in prompt
-    assert "5. unclear medical-query fallback" in prompt
+    assert "output safety" in prompt
+    assert "never generate a definitive diagnosis" in prompt
+    assert "never generate a personalized prescription recommendation" in prompt
+
+
+def test_output_diagnosis_is_detected():
+    response = "You have pneumonia based on your symptoms."
+
+    assert contains_unsafe_diagnosis(response) is True
+    assert classify_ai_output(response) == "diagnosis"
+
+
+def test_output_definitive_diagnosis_is_detected():
+    response = "You definitely have diabetes."
+
+    assert contains_unsafe_diagnosis(response) is True
+    assert classify_ai_output(response) == "diagnosis"
+
+
+def test_output_prescription_is_detected():
+    response = "You should take amoxicillin."
+
+    assert contains_unsafe_prescription(response) is True
+    assert classify_ai_output(response) == "prescription"
+
+
+def test_output_personalized_dosage_is_detected():
+    response = "Take 500mg twice daily."
+
+    assert contains_unsafe_prescription(response) is True
+    assert classify_ai_output(response) == "prescription"
+
+
+def test_safe_educational_output_is_allowed():
+    response = (
+        "Flu commonly includes symptoms such as fever, cough, fatigue, "
+        "and body aches."
+    )
+
+    validation = validate_ai_response(response)
+
+    assert validation["is_safe"] is True
+    assert validation["category"] == "safe"
+
+
+def test_unsafe_diagnosis_output_is_sanitized():
+    response = sanitize_ai_response(
+        "You have pneumonia based on your symptoms."
+    )
+
+    assert "definitive medical diagnosis" in response.lower()
+    assert "pneumonia" not in response.lower()
+
+
+def test_unsafe_prescription_output_is_sanitized():
+    response = sanitize_ai_response(
+        "You should take amoxicillin."
+    )
+
+    assert "can't prescribe medicines" in response.lower()
+    assert "amoxicillin" not in response.lower()
+
+
+def test_safe_output_is_returned_unchanged():
+    original = "Flu commonly causes fever and fatigue."
+
+    assert sanitize_ai_response(original) == original

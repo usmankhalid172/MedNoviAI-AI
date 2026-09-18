@@ -118,7 +118,7 @@ def test_unclear_request_is_blocked_before_normal_ai_processing():
     assert ai_calls == []
 
 
-def test_all_safety_categories_bypass_normal_ai_processing():
+def test_all_input_safety_categories_bypass_normal_ai_processing():
     ai_calls = []
 
     def fake_ai_handler(text: str) -> str:
@@ -142,3 +142,72 @@ def test_all_safety_categories_bypass_normal_ai_processing():
         assert response != "NORMAL AI RESPONSE"
 
     assert ai_calls == []
+
+
+def test_unsafe_diagnosis_from_ai_is_replaced_by_safe_response():
+    ai_calls = []
+
+    def fake_ai_handler(text: str) -> str:
+        ai_calls.append(text)
+        return "You have pneumonia based on your symptoms."
+
+    response = handle_user_request(
+        "Tell me what this could be.",
+        fake_ai_handler,
+    )
+
+    assert "definitive medical diagnosis" in response.lower()
+    assert "pneumonia" not in response.lower()
+    assert ai_calls == ["Tell me what this could be."]
+
+
+def test_unsafe_prescription_from_ai_is_replaced_by_safe_response():
+    ai_calls = []
+
+    def fake_ai_handler(text: str) -> str:
+        ai_calls.append(text)
+        return "You should take amoxicillin."
+
+    response = handle_user_request(
+        "Give me general information about treatment.",
+        fake_ai_handler,
+    )
+
+    assert "can't prescribe medicines" in response.lower()
+    assert "amoxicillin" not in response.lower()
+    assert ai_calls == ["Give me general information about treatment."]
+
+
+def test_unsafe_dosage_from_ai_is_replaced_by_safe_response():
+    ai_calls = []
+
+    def fake_ai_handler(text: str) -> str:
+        ai_calls.append(text)
+        return "Take 500mg twice daily."
+
+    response = handle_user_request(
+        "What is the treatment information?",
+        fake_ai_handler,
+    )
+
+    assert "can't prescribe medicines" in response.lower()
+    assert "500mg" not in response.lower()
+    assert ai_calls == ["What is the treatment information?"]
+
+
+def test_safe_ai_output_is_returned():
+    ai_calls = []
+
+    def fake_ai_handler(text: str) -> str:
+        ai_calls.append(text)
+        return "Flu commonly causes fever, cough, fatigue, and body aches."
+
+    response = handle_user_request(
+        "What are common flu symptoms?",
+        fake_ai_handler,
+    )
+
+    assert response == (
+        "Flu commonly causes fever, cough, fatigue, and body aches."
+    )
+    assert ai_calls == ["What are common flu symptoms?"]

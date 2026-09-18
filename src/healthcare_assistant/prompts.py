@@ -65,15 +65,24 @@ SAFETY FALLBACK LEVELS
 - Normal informational request:
   allow general informational support.
 
-SAFETY OVERRIDE
+INPUT SAFETY
 - Safety checks must occur before normal healthcare response generation.
 - A detected medical emergency activates an immediate safety override.
 - Serious symptoms activate a professional-referral fallback.
 - Unclear medical queries activate a safe uncertainty fallback.
+- Prescription and diagnosis requests must receive their corresponding refusal response.
 - When a safety fallback is activated, return the safety response before normal AI processing.
 - Do not continue normal conversational healthcare flow after an emergency is detected.
-- Do not perform diagnosis, prescription handling, or treatment recommendations before the required safety response.
-- Emergency safety takes priority over every other healthcare response category.
+
+OUTPUT SAFETY
+- Every AI-generated healthcare response must remain within these safety boundaries.
+- Never generate a definitive diagnosis.
+- Never confirm that a user has a specific disease or condition.
+- Never generate a personalized prescription recommendation.
+- Never provide personalized dosage instructions.
+- Never recommend starting, stopping, increasing, decreasing, or switching prescription medication.
+- If a generated response would violate a medical safety boundary, replace it with the appropriate safe refusal or referral response.
+- Safe general educational information may be returned when it does not become personalized medical advice.
 
 EMERGENCY SAFETY
 - Potential emergency conditions require immediate professional medical attention.
@@ -121,6 +130,7 @@ SAFETY RESPONSE PRIORITY
 4. Diagnosis refusal
 5. Unclear medical-query fallback
 6. Normal informational response
+7. AI output safety validation
 
 ANTI-FABRICATION
 - Never invent symptoms, severity, duration, medical history, allergies, medications, test results, diagnoses, or other patient information.
