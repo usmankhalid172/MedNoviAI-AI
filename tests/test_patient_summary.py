@@ -63,3 +63,22 @@ def test_patient_summary_can_be_serialized_to_json():
     assert data["duration"] == "1 hour"
     assert data["recommended_specialty"] == "Cardiology"
     assert data["safety_disclaimer"] == "This is not a diagnosis or prescription."
+
+
+def test_patient_summary_generates_backend_ready_payload():
+    payload = PatientSummaryService().generate_payload(
+        symptoms=["fever", "cough"],
+        duration="3 days",
+        context="Symptoms started after recent travel.",
+        recommended_specialty="General Medicine",
+        safety_disclaimer="This summary is not a diagnosis or prescription.",
+    )
+
+    assert isinstance(payload, dict)
+    assert payload == {
+        "symptoms": ["fever", "cough"],
+        "duration": "3 days",
+        "context": "Symptoms started after recent travel.",
+        "recommended_specialty": "General Medicine",
+        "safety_disclaimer": "This summary is not a diagnosis or prescription.",
+    }
