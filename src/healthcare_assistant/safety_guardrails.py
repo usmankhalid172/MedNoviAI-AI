@@ -8,7 +8,7 @@ from typing import Dict, Optional
 # emergency > serious > prescription > treatment > diagnosis > unclear > normal
 
 EMERGENCY_PATTERNS = (
-    r"\b(?:severe|crushing|intense|very bad)\s+(?:chest\s+)?pain\b",
+    r"\b(?:severe|crushing|intense|very bad)\s+chest\s+pain\b",
     r"\bmy\s+chest\s+(?:hurts|is\s+hurting|really\s+hurts)\b",
     r"\bchest\s+pain\b",
     r"\b(?:can't|cannot|can not|unable to)\s+(?:breathe|breathing)\b",
@@ -47,7 +47,11 @@ SERIOUS_SYMPTOM_PATTERNS = (
     r"\bsevere\s+weakness\b",
     r"\bsevere\s+pain\s+(?:that\s+)?(?:isn't|is\s+not)\s+improving\b",
     r"\bpain\s+(?:that\s+)?(?:isn't|is\s+not)\s+improving\b",
+    r"\b(?:urgent|concerning)\s+symptoms?\b",
+    r"\bhigh\s+fever\s+(?:that\s+)?(?:isn't|is\s+not)\s+improving\b",
+    r"\brepeated\s+vomiting\b",
 )
+
 
 PRESCRIPTION_PATTERNS = (
     r"\bwhat\s+(?:medicine|medication|drug)\s+should\s+i\s+(?:take|use)\b",
@@ -78,6 +82,7 @@ PRESCRIPTION_PATTERNS = (
     r"\bprescribe\s+(?:medicine|medication|a\s+drug)\b",
 )
 
+
 PERSONALIZED_TREATMENT_PATTERNS = (
     r"\bwhat\s+treatment\s+should\s+i\s+(?:personally\s+)?follow\b",
     r"\bwhat\s+treatment\s+should\s+i\s+use\b",
@@ -91,32 +96,40 @@ PERSONALIZED_TREATMENT_PATTERNS = (
     r"\btell\s+me\s+how\s+to\s+treat\s+(?:this|it|my\s+symptoms?|my\s+condition)\b",
 )
 
+
 DIAGNOSIS_PATTERNS = (
     r"\bdiagnose\s+me\b",
     r"\bcan\s+you\s+diagnose\s+me\b",
+
     r"\bwhat\s+(?:disease|condition|illness|disorder)\s+do\s+i\s+have\b",
-    r"\bwhat(?:'s|\s+is)\s+exactly\s+wrong\s+with\s+me\b",
-    r"\bcan\s+you\s+tell\s+me\s+(?:exactly\s+)?what(?:'s|\s+is)\s+wrong\s+with\s+me\b",
     r"\bwhat\s+(?:exactly\s+)?is\s+my\s+diagnosis\b",
     r"\bwhat's\s+my\s+diagnosis\b",
     r"\btell\s+me\s+my\s+diagnosis\b",
+
+    r"\bcan\s+you\s+tell\s+me\s+(?:exactly\s+)?what(?:'s|\s+is)\s+wrong\s+with\s+me\b",
     r"\bcan\s+you\s+confirm\s+(?:that\s+)?(?:i\s+have|this\s+is)\b",
     r"\bcan\s+you\s+tell\s+me\s+if\s+i\s+have\b",
+
+    r"\bdo\s+(?:these|those)\s+symptoms\s+mean\s+i\s+have\b",
+    r"\bcould\s+(?:these|those)\s+symptoms\s+(?:mean|indicate|suggest)\b",
+    r"\bmight\s+(?:these|those)\s+symptoms\s+(?:mean|indicate|suggest)\b",
+    r"\bmay\s+(?:these|those)\s+symptoms\s+(?:mean|indicate|suggest)\b",
+
     r"\bdo\s+i\s+have\s+(?:covid|diabetes|cancer|pneumonia|flu|asthma)\b",
     r"\bdo\s+i\s+definitely\s+have\b",
+
     r"\bcould\s+this\s+be\s+(?:a\s+)?(?:disease|condition|illness|infection)\b",
     r"\bcould\s+this\s+be\s+(?:covid|diabetes|cancer|pneumonia|flu|asthma|a\s+heart\s+attack|a\s+stroke)\b",
-    r"\bcould\s+(?:these|those)\s+symptoms\s+(?:mean|indicate|suggest)\s+(?:that\s+)?i\s+have\b",
-    r"\bmight\s+(?:these|those)\s+symptoms\s+(?:mean|indicate|suggest)\s+(?:that\s+)?i\s+have\b",
-    r"\bmay\s+(?:these|those)\s+symptoms\s+(?:mean|indicate|suggest)\s+(?:that\s+)?i\s+have\b",
-    r"\bdo\s+these\s+symptoms\s+mean\s+i\s+have\b",
-    r"\bis\s+this\s+(?:definitely|really)\s+(?:covid|diabetes|cancer|pneumonia|flu|asthma)\b",
+
+    r"\bis\s+this\s+(?:definitely|really)\s+(?:covid|diabetes|cancer|pneumonia|flu|asthma|an?\s+infection)\b",
     r"\bis\s+this\s+(?:covid|diabetes|cancer|pneumonia|flu|asthma)\b",
     r"\bis\s+this\s+(?:a\s+)?(?:heart\s+attack|stroke|serious\s+condition)\b",
+
     r"\bwhat\s+condition\s+is\s+this\b",
     r"\bwhat\s+illness\s+is\s+this\b",
     r"\bwhat\s+disease\s+is\s+this\b",
 )
+
 
 UNCLEAR_MEDICAL_PATTERNS = (
     r"\bi\s+(?:don't|do\s+not)\s+know\s+what(?:'s| is)\s+wrong\b",
@@ -129,6 +142,7 @@ UNCLEAR_MEDICAL_PATTERNS = (
     r"\bi\s+feel\s+strange\s+and\s+do\s+not\s+know\s+(?:what|why)\b",
 )
 
+
 UNSAFE_DIAGNOSIS_OUTPUT_PATTERNS = (
     r"\bbased\s+on\s+(?:your|the)\s+symptoms?.{0,80}\byou\s+(?:(?:definitely|probably|likely)\s+)?have\b",
     r"\bfrom\s+what\s+you\s+described.{0,80}\byou\s+(?:(?:definitely|probably|likely)\s+)?have\b",
@@ -140,6 +154,7 @@ UNSAFE_DIAGNOSIS_OUTPUT_PATTERNS = (
     r"\bthis\s+(?:is|looks\s+like|appears\s+to\s+be)\s+(?:definitely|probably|likely)?\s*(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke)\b",
     r"\byour\s+symptoms?\s+(?:prove|confirm|show)\s+(?:that\s+)?you\s+have\b",
 )
+
 
 UNSAFE_PRESCRIPTION_OUTPUT_PATTERNS = (
     r"\byou\s+should\s+take\s+(?:amoxicillin|azithromycin|ibuprofen|paracetamol|acetaminophen|aspirin|metformin|insulin|prednisone)\b",
@@ -157,6 +172,7 @@ UNSAFE_PRESCRIPTION_OUTPUT_PATTERNS = (
     r"\bstart\s+taking\s+your\s+(?:medicine|medication)\b",
     r"\bswitch\s+your\s+(?:medicine|medication)\b",
 )
+
 
 UNSAFE_TREATMENT_OUTPUT_PATTERNS = (
     r"\byou\s+should\s+follow\s+(?:this|the)\s+treatment\b",
@@ -178,6 +194,21 @@ def _matches_any(text: str, patterns: tuple[str, ...]) -> bool:
     return any(re.search(pattern, text) for pattern in patterns)
 
 
+def _normal_result() -> Dict[str, Optional[object]]:
+    """Return the default normal classification shape."""
+    return {
+        "category": "normal",
+        "is_emergency": False,
+        "is_serious": False,
+        "is_prescription": False,
+        "is_treatment": False,
+        "is_diagnosis": False,
+        "is_unclear": False,
+        "requires_immediate_redirect": False,
+        "reason": None,
+    }
+
+
 def classify_request(text: str) -> Dict[str, Optional[object]]:
     """
     Classify a healthcare input request.
@@ -188,17 +219,7 @@ def classify_request(text: str) -> Dict[str, Optional[object]]:
     normalized = _normalize(text)
 
     if not normalized:
-        return {
-            "category": "normal",
-            "is_emergency": False,
-            "is_serious": False,
-            "is_prescription": False,
-            "is_treatment": False,
-            "is_diagnosis": False,
-            "is_unclear": False,
-            "requires_immediate_redirect": False,
-            "reason": None,
-        }
+        return _normal_result()
 
     if _matches_any(normalized, EMERGENCY_PATTERNS):
         return {
@@ -275,20 +296,10 @@ def classify_request(text: str) -> Dict[str, Optional[object]]:
             "is_diagnosis": False,
             "is_unclear": True,
             "requires_immediate_redirect": False,
-            "reason": "Unclear medical query detected.",
+            "reason": "Unclear or unsupported medical query detected.",
         }
 
-    return {
-        "category": "normal",
-        "is_emergency": False,
-        "is_serious": False,
-        "is_prescription": False,
-        "is_treatment": False,
-        "is_diagnosis": False,
-        "is_unclear": False,
-        "requires_immediate_redirect": False,
-        "reason": None,
-    }
+    return _normal_result()
 
 
 def check_safety(text: str) -> Dict[str, Optional[object]]:
@@ -324,17 +335,18 @@ def emergency_response() -> str:
         "This may be a medical emergency and requires immediate attention. "
         "Please contact local emergency services or seek immediate professional "
         "medical care from a qualified healthcare professional now. Do not delay "
-        "care by relying on this assistant. This assistant cannot diagnose "
-        "or treat medical emergencies."
+        "care by relying on this assistant. This assistant cannot diagnose or "
+        "treat medical emergencies."
     )
 
 
 def serious_symptom_response() -> str:
-    """Return professional referral guidance for serious symptoms."""
+    """Return professional referral guidance for urgent or serious symptoms."""
     return (
         "These symptoms may require prompt medical evaluation. "
         "Please contact a qualified healthcare professional for assessment, "
-        "especially if the symptoms are worsening, persistent, or concerning."
+        "especially if the symptoms are urgent, worsening, persistent, "
+        "or concerning."
     )
 
 
@@ -367,12 +379,12 @@ def diagnosis_refusal_response() -> str:
 
 
 def unclear_medical_response() -> str:
-    """Return safe fallback for unclear medical questions."""
+    """Return safe fallback for unclear or unsupported medical questions."""
     return (
         "I can't determine the cause of your symptoms from the available "
         "information alone. I can provide general health information, but a "
         "qualified healthcare professional should evaluate symptoms that are "
-        "concerning, persistent, or worsening."
+        "concerning, persistent, worsening, or otherwise require assessment."
     )
 
 
@@ -387,6 +399,7 @@ def apply_safety_override(text: str) -> Optional[str]:
 def contains_unsafe_diagnosis(text: str) -> bool:
     """Detect unsafe personalized diagnostic statements in AI output."""
     normalized = _normalize(text)
+
     return _matches_any(
         normalized,
         UNSAFE_DIAGNOSIS_OUTPUT_PATTERNS,
@@ -396,6 +409,7 @@ def contains_unsafe_diagnosis(text: str) -> bool:
 def contains_unsafe_prescription(text: str) -> bool:
     """Detect unsafe prescription or dosage advice in AI output."""
     normalized = _normalize(text)
+
     return _matches_any(
         normalized,
         UNSAFE_PRESCRIPTION_OUTPUT_PATTERNS,
@@ -405,6 +419,7 @@ def contains_unsafe_prescription(text: str) -> bool:
 def contains_unsafe_treatment(text: str) -> bool:
     """Detect unsafe personalized treatment instructions in AI output."""
     normalized = _normalize(text)
+
     return _matches_any(
         normalized,
         UNSAFE_TREATMENT_OUTPUT_PATTERNS,
