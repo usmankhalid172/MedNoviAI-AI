@@ -55,6 +55,23 @@ class PatientIntakeCollector:
         ),
     }
 
+    AMBIGUOUS_RESPONSES = {
+        "i don't know",
+        "i dont know",
+        "not sure",
+        "i'm not sure",
+        "im not sure",
+        "maybe",
+        "don't know",
+        "dont know",
+        "unsure",
+        "no idea",
+        "i have no idea",
+        "cannot say",
+        "can't say",
+        "cant say",
+    }
+
     def __init__(self) -> None:
         self.info = PatientIntakeInformation()
 
@@ -97,6 +114,13 @@ class PatientIntakeCollector:
             raise ValueError("message must not be empty")
 
         return normalized_message
+
+    def _is_ambiguous_response(self, message: str) -> bool:
+        """Return True when a patient gives a non-informative response."""
+
+        normalized_message = self._normalize_message(message).lower()
+
+        return normalized_message in self.AMBIGUOUS_RESPONSES
 
     def _extract_age_group(self, message: str) -> str | None:
         """Extract or derive an age group from a patient message."""
@@ -329,17 +353,13 @@ class PatientIntakeCollector:
         # Only use contextual follow-up interpretation when the
         # message did not explicitly provide any missing field.
         #
-        # Example:
-        # "I have a headache." -> symptoms are extracted,
-        # so we should NOT treat the whole sentence as onset.
-        #
-        # Example:
-        # "Yesterday." -> no explicit field is extracted,
-        # so it is interpreted as the answer to the onset question.
+        # Explicitly ambiguous responses are skipped so they cannot
+        # accidentally be interpreted as patient information.
         if missing_before and not progress_made:
-            progress_made = self._extract_follow_up_answer(
-                normalized_message
-            )
+            if not self._is_ambiguous_response(normalized_message):
+                progress_made = self._extract_follow_up_answer(
+                    normalized_message
+                )
 
         missing_fields = self.missing_fields()
         ready = not missing_fields
@@ -452,4 +472,3 @@ class PatientIntakeCollector:
             return "What is your age group?"
 
         return None
-
