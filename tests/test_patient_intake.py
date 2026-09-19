@@ -658,3 +658,325 @@ def test_multi_turn_data_is_preserved_for_backend_handoff():
         "secondary_history": None,
         "additional_details": None,
     }
+
+
+# ---------------------------------------------------------
+# Sep 15: Graceful fallback and active dialogue state
+# ---------------------------------------------------------
+
+
+def test_off_topic_message_does_not_fill_symptoms():
+    collector = PatientIntakeCollector()
+
+    result = collector.process_message(
+        "What time does the clinic close?"
+    )
+
+    assert result.ready is False
+    assert result.handoff is False
+    assert result.missing_fields == [
+        "symptoms",
+        "symptom_onset",
+        "age_group",
+    ]
+
+    assert collector.info.symptoms is None
+    assert collector.info.symptom_onset is None
+    assert collector.info.age_group is None
+
+
+def test_off_topic_message_keeps_symptom_question_active():
+    collector = PatientIntakeCollector()
+
+    result = collector.process_message(
+        "I want to know the clinic address."
+    )
+
+    assert result.response == (
+        "I need a little more information about your symptoms. "
+        "Please describe what you are experiencing. "
+        "What symptoms are you experiencing?"
+    )
+
+    assert result.missing_fields == [
+        "symptoms",
+        "symptom_onset",
+        "age_group",
+    ]
+
+
+def test_off_topic_message_does_not_overwrite_existing_symptoms():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache.")
+
+    result = collector.process_message(
+        "Can you tell me your hospital timings?"
+    )
+
+    assert result.ready is False
+    assert result.handoff is False
+
+    assert collector.info.symptoms == "a headache"
+    assert collector.info.symptom_onset is None
+    assert collector.info.age_group is None
+
+    assert result.missing_fields == [
+        "symptom_onset",
+        "age_group",
+    ]
+
+
+def test_ambiguous_onset_keeps_onset_missing():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache.")
+
+    result = collector.process_message(
+        "I don't know."
+    )
+
+    assert result.ready is False
+    assert result.handoff is False
+
+    assert collector.info.symptoms == "a headache"
+    assert collector.info.symptom_onset is None
+
+    assert result.missing_fields == [
+        "symptom_onset",
+        "age_group",
+    ]
+
+
+def test_ambiguous_onset_returns_graceful_fallback():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache.")
+
+    result = collector.process_message(
+        "Not sure."
+    )
+
+    assert result.response == (
+        "I need to know when your symptoms started. "
+        "For example, you can say 'yesterday' or 'two days ago'. "
+        "When did your symptoms start?"
+    )
+
+
+def test_ambiguous_age_keeps_age_missing():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache.")
+    collector.process_message("Yesterday.")
+
+    result = collector.process_message(
+        "I don't want to say."
+    )
+
+    assert result.ready is False
+    assert result.handoff is False
+    assert collector.info.age_group is None
+
+    assert result.missing_fields == ["age_group"]
+
+
+def test_ambiguous_age_returns_graceful_fallback():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache.")
+    collector.process_message("Yesterday.")
+
+    result = collector.process_message(
+        "I don't know."
+    )
+
+    assert result.response == (
+        "I still need your age group. "
+        "You can provide your age or say child, teenager, adult, or senior. "
+        "What is your age group?"
+    )
+
+
+def test_valid_answer_after_off_topic_message_continues_dialogue():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache.")
+
+    collector.process_message(
+        "Can you tell me the clinic address?"
+    )
+
+    result = collector.process_message("Yesterday.")
+
+    assert result.ready is False
+    assert result.handoff is False
+    assert result.missing_fields == ["age_group"]
+
+    assert collector.info.symptoms == "a headache"
+    assert collector.info.symptom_onset == "Yesterday"
+
+
+def test_valid_answer_after_ambiguous_age_completes_intake():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache.")
+    collector.process_message("Yesterday.")
+    collector.process_message("Not sure.")
+
+    result = collector.process_message("I am 22.")
+
+    assert result.ready is True
+    assert result.handoff is True
+    assert result.missing_fields == []
+
+    assert result.context["primary_complaint"] == "a headache"
+    assert result.context["symptom_onset"] == "Yesterday"
+    assert result.context["age_group"] == "adult"
+
+
+def test_off_topic_message_does_not_reset_existing_dialogue_state():
+    collector = PatientIntakeCollector()
+
+    collector.process_message(
+        "I have a fever. Since yesterday."
+    )
+
+    assert collector.info.symptoms == "a fever"
+    assert collector.info.symptom_onset == "Since yesterday"
+    assert collector.info.age_group is None
+
+    result = collector.process_message(
+        "What services do you provide?"
+    )
+
+    assert result.ready is False
+    assert result.handoff is False
+
+    assert collector.info.symptoms == "a fever"
+    assert collector.info.symptom_onset == "Since yesterday"
+    assert collector.info.age_group is None
+
+    assert result.missing_fields == ["age_group"]
+
+def test_ambiguous_symptom_response_keeps_symptoms_missing():
+    collector = PatientIntakeCollector()
+
+    result = collector.process_message("I don't know")
+
+    assert collector.info.symptoms is None
+    assert "symptoms" in result.missing_fields
+    assert result.ready is False
+    assert result.handoff is False
+
+
+def test_not_sure_symptom_response_keeps_symptoms_missing():
+    collector = PatientIntakeCollector()
+
+    result = collector.process_message("not sure")
+
+    assert collector.info.symptoms is None
+    assert "symptoms" in result.missing_fields
+    assert result.ready is False
+
+
+def test_maybe_symptom_response_keeps_symptoms_missing():
+    collector = PatientIntakeCollector()
+
+    result = collector.process_message("maybe")
+
+    assert collector.info.symptoms is None
+    assert "symptoms" in result.missing_fields
+    assert result.ready is False
+
+
+def test_ambiguous_onset_response_keeps_onset_missing():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache.")
+    result = collector.process_message("I'm not sure")
+
+    assert collector.info.symptom_onset is None
+    assert "symptom_onset" in result.missing_fields
+    assert result.ready is False
+
+
+def test_ambiguous_age_response_keeps_age_missing():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache.")
+    collector.process_message("Since yesterday.")
+    result = collector.process_message("maybe")
+
+    assert collector.info.age_group is None
+    assert "age_group" in result.missing_fields
+    assert result.ready is False
+
+
+def test_valid_response_after_ambiguous_response_completes_intake():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache.")
+    collector.process_message("not sure")
+    result = collector.process_message("Since yesterday. I am an adult.")
+
+    assert result.ready is True
+    assert result.handoff is True
+    assert collector.info.symptoms == "a headache"
+    assert collector.info.symptom_onset == "Since yesterday"
+    assert collector.info.age_group == "adult"
+
+
+def test_ambiguous_response_does_not_enter_backend_record():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I don't know")
+
+    assert collector.info.symptoms is None
+
+    try:
+        collector.get_backend_record()
+        assert False, "Incomplete intake should not produce a backend record"
+    except ValueError:
+        pass
+
+def test_ambiguous_symptom_response_returns_clarifying_prompt():
+    collector = PatientIntakeCollector()
+
+    result = collector.process_message("I don't know")
+
+    assert result.fallback is True
+    assert result.ready is False
+    assert "symptoms" in result.missing_fields
+    assert "more information about your symptoms" in result.response
+    assert "What symptoms are you experiencing?" in result.response
+
+
+def test_ambiguous_onset_response_returns_clarifying_prompt():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache.")
+    result = collector.process_message("not sure")
+
+    assert result.fallback is True
+    assert result.ready is False
+    assert "symptom_onset" in result.missing_fields
+    assert "when your symptoms started" in result.response
+    assert "yesterday" in result.response
+    assert "When did your symptoms start?" in result.response
+
+
+def test_ambiguous_age_response_returns_clarifying_prompt():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache.")
+    collector.process_message("Since yesterday.")
+    result = collector.process_message("maybe")
+
+    assert result.fallback is True
+    assert result.ready is False
+    assert "age_group" in result.missing_fields
+    assert "age group" in result.response
+    assert "child" in result.response
+    assert "adult" in result.response
+    assert "What is your age group?" in result.response
