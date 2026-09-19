@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 import re
 
 
@@ -29,7 +30,9 @@ class PatientIntakeInformation:
 
 
 class PatientIntakeCollector:
-    """Collect patient information across multiple conversation turns."""
+    """
+    Collect patient information across multiple conversation turns.
+    """
 
     REQUIRED_FIELDS = [
         "symptoms",
@@ -161,7 +164,11 @@ class PatientIntakeCollector:
         ]
 
         for pattern in onset_patterns:
-            onset_match = re.search(pattern, message, re.IGNORECASE)
+            onset_match = re.search(
+                pattern,
+                message,
+                re.IGNORECASE,
+            )
 
             if onset_match:
                 return onset_match.group(0).strip().rstrip(".,!?")
@@ -178,6 +185,7 @@ class PatientIntakeCollector:
 
         extracted = {}
 
+        # Primary complaint / symptoms
         symptom_match = re.search(
             r"\b(?:i have|i am having|i'm having|"
             r"i've been having|i have been having|"
@@ -190,11 +198,13 @@ class PatientIntakeCollector:
         if symptom_match:
             extracted["symptoms"] = symptom_match.group(1).strip()
 
+        # Symptom onset
         onset = self._extract_onset(normalized_message)
 
         if onset:
             extracted["symptom_onset"] = onset
 
+        # Age group
         age_group = self._extract_age_group(normalized_message)
 
         if age_group:
@@ -294,18 +304,38 @@ class PatientIntakeCollector:
         self,
         message: str,
     ) -> PatientIntakeTurnResult:
-        """Process one patient message using multi-turn dialogue context."""
+        """
+        Process one patient message using multi-turn dialogue context.
+
+        The collector extracts explicit information first, then uses
+        the active missing field to interpret valid short follow-up
+        answers. Ambiguous or off-topic input does not overwrite
+        existing patient information.
+        """
 
         normalized_message = self._normalize_message(message)
 
+        # Remember which required fields were missing before
+        # processing this turn.
         missing_before = self.missing_fields()
 
+        # First extract information explicitly stated in the message.
         self.extract_from_message(normalized_message)
 
         missing_after_extraction = self.missing_fields()
 
         progress_made = len(missing_after_extraction) < len(missing_before)
 
+        # Only use contextual follow-up interpretation when the
+        # message did not explicitly provide any missing field.
+        #
+        # Example:
+        # "I have a headache." -> symptoms are extracted,
+        # so we should NOT treat the whole sentence as onset.
+        #
+        # Example:
+        # "Yesterday." -> no explicit field is extracted,
+        # so it is interpreted as the answer to the onset question.
         if missing_before and not progress_made:
             progress_made = self._extract_follow_up_answer(
                 normalized_message
@@ -315,12 +345,14 @@ class PatientIntakeCollector:
         ready = not missing_fields
 
         if ready:
+            response = (
+                "Thank you. I have collected the required patient "
+                "information. The information can now be passed to "
+                "the recommendation module."
+            )
+
             return PatientIntakeTurnResult(
-                response=(
-                    "Thank you. I have collected the required patient "
-                    "information. The information can now be passed to "
-                    "the recommendation module."
-                ),
+                response=response,
                 missing_fields=[],
                 ready=True,
                 context=self.get_backend_record(),
@@ -337,7 +369,6 @@ class PatientIntakeCollector:
             )
 
             next_question = self.next_question()
-
             response = f"{fallback} {next_question}"
 
             return PatientIntakeTurnResult(
@@ -380,12 +411,19 @@ class PatientIntakeCollector:
         return not self.missing_fields()
 
     def get_context(self) -> dict[str, str | None]:
-        """Return structured patient data."""
+        """
+        Return structured patient data.
+
+        This method is kept for backward compatibility with the
+        existing dialogue and recommendation interfaces.
+        """
 
         return self.get_backend_record()
 
     def get_backend_record(self) -> dict[str, str | None]:
-        """Return finalized patient record for backend storage handoff."""
+        """
+        Return the finalized patient record for backend storage handoff.
+        """
 
         if not self.is_ready():
             raise ValueError(
@@ -414,3 +452,4 @@ class PatientIntakeCollector:
             return "What is your age group?"
 
         return None
+

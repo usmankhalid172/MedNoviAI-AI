@@ -659,6 +659,7 @@ def test_multi_turn_data_is_preserved_for_backend_handoff():
         "additional_details": None,
     }
 
+
 # ---------------------------------------------------------
 # Sep 15: Graceful fallback and active dialogue state
 # ---------------------------------------------------------
