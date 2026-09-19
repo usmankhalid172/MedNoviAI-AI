@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
-from src.appointment_assistance.patient_intake import PatientIntakeCollector
+from src.appointment_assistance.patient_intake import (
+    PatientIntakeCollector,
+)
 
 
 class DialogueResponses:
@@ -14,13 +16,15 @@ class DialogueResponses:
     )
 
     MISSING_SYMPTOMS = "What symptoms are you experiencing?"
+
     MISSING_ONSET = "When did your symptoms start?"
+
     MISSING_AGE = "What is your age group?"
 
 
 @dataclass
 class DialogueTurnResult:
-    """Result returned after processing one patient dialogue turn."""
+    """Result returned after processing one dialogue turn."""
 
     response: str
     missing_fields: list[str]
@@ -31,36 +35,21 @@ class DialogueTurnResult:
 
 
 class PatientDialoguePolicy:
-    """
-    Manage multi-turn patient intake conversations.
-
-    The dialogue policy controls the conversation while
-    PatientIntakeCollector owns patient information, extraction,
-    validation, and structured patient context.
-
-    This keeps the dialogue layer separate from the patient-intake
-    data layer while allowing both modules to work together.
-    """
+    """Manage the patient-facing multi-turn dialogue flow."""
 
     def __init__(self) -> None:
-        """Initialize the dialogue policy with a patient intake collector."""
-
         self.intake = PatientIntakeCollector()
 
     @property
     def state(self):
-        """Expose the current patient intake information."""
+        """Return the current patient intake state."""
 
         return self.intake.info
 
-    def process_message(self, message: str) -> DialogueTurnResult:
-        """
-        Process one patient message.
-
-        PatientIntakeCollector extracts and stores information.
-        The dialogue policy decides whether to ask another question
-        or hand the completed information to the next module.
-        """
+    def process_message(
+        self, message: str
+    ) -> DialogueTurnResult:
+        """Process a patient message and maintain dialogue state."""
 
         result = self.intake.process_message(message)
 
@@ -76,8 +65,19 @@ class PatientDialoguePolicy:
 
         next_question = self.get_next_question()
 
+        # Use the collector's fallback response when the patient has
+        # already provided symptom information and the new message
+        # is ambiguous, incomplete, or off-topic.
+        #
+        # For the very first off-topic message, keep the normal
+        # symptom question active instead of combining both responses.
+        if result.fallback and self.state.symptoms:
+            response = result.response
+        else:
+            response = next_question or result.response
+
         return DialogueTurnResult(
-            response=next_question or result.response,
+            response=response,
             missing_fields=result.missing_fields,
             ready=False,
             handoff=False,
@@ -86,21 +86,17 @@ class PatientDialoguePolicy:
         )
 
     def get_missing_fields(self) -> list[str]:
-        """Return required intake fields that are still missing."""
+        """Return currently missing required patient fields."""
 
         return self.intake.missing_fields()
 
     def is_ready(self) -> bool:
-        """Return True when all required intake information is collected."""
+        """Return True when patient intake is complete."""
 
         return self.intake.is_ready()
 
     def get_context(self) -> dict[str, str | None]:
-        """
-        Return the dialogue-compatible context.
-
-        This preserves the existing dialogue-policy interface.
-        """
+        """Return dialogue context when intake is complete."""
 
         if not self.is_ready():
             raise ValueError(
@@ -115,17 +111,12 @@ class PatientDialoguePolicy:
         }
 
     def get_patient_record(self) -> dict[str, str | None]:
-        """
-        Return the structured patient record from PatientIntakeCollector.
-
-        This is the context intended for downstream recommendation
-        or backend modules.
-        """
+        """Return the finalized backend-compatible patient record."""
 
         return self.intake.get_context()
 
     def get_next_question(self) -> str | None:
-        """Return the next question required to complete patient intake."""
+        """Return the question for the currently missing field."""
 
         missing_fields = self.get_missing_fields()
 

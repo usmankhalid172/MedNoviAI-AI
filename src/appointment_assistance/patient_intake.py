@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-
 import re
 
 
@@ -12,6 +11,7 @@ class PatientIntakeTurnResult:
     ready: bool
     context: dict[str, str | None] | None = None
     handoff: bool = False
+    fallback: bool = False
 
 
 @dataclass
@@ -36,6 +36,21 @@ class PatientIntakeCollector:
         "symptom_onset",
         "age_group",
     ]
+
+    FALLBACK_MESSAGES = {
+        "symptoms": (
+            "I need a little more information about your symptoms. "
+            "Please describe what you are experiencing."
+        ),
+        "symptom_onset": (
+            "I need to know when your symptoms started. "
+            "For example, you can say 'yesterday' or 'two days ago'."
+        ),
+        "age_group": (
+            "I still need your age group. "
+            "You can provide your age or say child, teenager, adult, or senior."
+        ),
+    }
 
     def __init__(self) -> None:
         self.info = PatientIntakeInformation()
@@ -133,29 +148,23 @@ class PatientIntakeCollector:
         """Extract symptom onset information."""
 
         onset_patterns = [
-            r"\b("
-            r"since\s+.+?"
-            r"|started\s+.+?"
-            r"|for\s+\d+\s+(?:day|days|week|weeks|month|months)"
-            r"|for\s+(?:a|one|two|three|four|five|six|seven)\s+"
-            r"(?:day|days|week|weeks|month|months)"
-            r"|.+?\s+ago"
-            r"|yesterday"
-            r"|today"
-            r"|last\s+(?:night|evening|week|month)"
-            r"|this\s+(?:morning|afternoon|evening)"
-            r")\b",
+            r"since\s+[^.?!]+",
+            r"started\s+[^.?!]+",
+            r"for\s+\d+\s+(?:day|days|week|weeks|month|months)",
+            r"for\s+(?:a|one|two|three|four|five|six|seven)\s+"
+            r"(?:day|days|week|weeks|month|months)",
+            r"[^.?!]+?\s+ago",
+            r"yesterday",
+            r"today",
+            r"last\s+(?:night|evening|week|month)",
+            r"this\s+(?:morning|afternoon|evening)",
         ]
 
         for pattern in onset_patterns:
-            onset_match = re.search(
-                pattern,
-                message,
-                re.IGNORECASE,
-            )
+            onset_match = re.search(pattern, message, re.IGNORECASE)
 
             if onset_match:
-                return onset_match.group(1).strip()
+                return onset_match.group(0).strip().rstrip(".,!?")
 
         return None
 
@@ -169,7 +178,6 @@ class PatientIntakeCollector:
 
         extracted = {}
 
-        # Primary complaint / symptoms
         symptom_match = re.search(
             r"\b(?:i have|i am having|i'm having|"
             r"i've been having|i have been having|"
@@ -182,13 +190,11 @@ class PatientIntakeCollector:
         if symptom_match:
             extracted["symptoms"] = symptom_match.group(1).strip()
 
-        # Symptom onset
         onset = self._extract_onset(normalized_message)
 
         if onset:
             extracted["symptom_onset"] = onset
 
-        # Age group
         age_group = self._extract_age_group(normalized_message)
 
         if age_group:
@@ -196,58 +202,93 @@ class PatientIntakeCollector:
 
         return self.update(**extracted)
 
-
     def _extract_follow_up_answer(
-         self,
-         message: str,
-         ) -> PatientIntakeInformation:
-         """
-         Interpret a short patient response using the currently
-         missing required field as dialogue context.
-         """
+        self,
+        message: str,
+    ) -> bool:
+        """
+        Interpret a short patient response using the currently
+        missing required field as dialogue context.
 
-         normalized_message = self._normalize_message(message)
+        Returns True when the response supplied valid information
+        for the currently active field.
+        """
 
-         missing = self.missing_fields()
+        normalized_message = self._normalize_message(message)
+        missing = self.missing_fields()
 
-         # If symptoms are missing, only treat the message as a symptom
-         # answer when it appears to contain an actual patient complaint.
-         if missing and missing[0] == "symptoms":
-             symptom_indicators = (
-                 "pain", "ache", "headache", "fever", "cough", "cold",
-                 "nausea", "vomiting", "dizziness", "fatigue", "weakness",
-                 "rash", "bleeding", "swelling", "sore", "painful",
-                 "difficulty", "shortness", "breathing", "diarrhea",
-                 "constipation", "infection",
-             )
+        if not missing:
+            return False
 
-             message_lower = normalized_message.lower()
+        active_field = missing[0]
 
-             if any(
-                 indicator in message_lower
-                 for indicator in symptom_indicators
-             ):
-                 self.update(symptoms=normalized_message)
+        if active_field == "symptoms":
+            symptom_indicators = (
+                "pain",
+                "ache",
+                "headache",
+                "fever",
+                "cough",
+                "cold",
+                "nausea",
+                "vomiting",
+                "dizziness",
+                "fatigue",
+                "weakness",
+                "rash",
+                "bleeding",
+                "swelling",
+                "sore",
+                "soreness",
+                "painful",
+                "difficulty",
+                "shortness",
+                "breathing",
+                "diarrhea",
+                "constipation",
+                "infection",
+                "itching",
+                "itchy",
+                "cramps",
+                "cramping",
+                "congestion",
+                "migraine",
+                "stomach",
+                "throat",
+                "chest",
+                "back",
+            )
 
-         # If onset is missing, interpret the answer as symptom onset.
-         elif missing and missing[0] == "symptom_onset":
-             onset = self._extract_onset(normalized_message)
+            message_lower = normalized_message.lower()
 
-             if onset:
-                 self.update(symptom_onset=onset)
-             else:
-                 self.update(symptom_onset=normalized_message)
+            if any(
+                indicator in message_lower
+                for indicator in symptom_indicators
+            ):
+                self.update(symptoms=normalized_message)
+                return True
 
-         # If age group is missing, interpret the answer as an age group.
-         elif missing and missing[0] == "age_group":
-             age_group = self._extract_age_group(normalized_message)
+            return False
 
-             if age_group:
-                 self.update(age_group=age_group)
+        if active_field == "symptom_onset":
+            onset = self._extract_onset(normalized_message)
 
-         return self.info
+            if onset:
+                self.update(symptom_onset=onset)
+                return True
 
+            return False
 
+        if active_field == "age_group":
+            age_group = self._extract_age_group(normalized_message)
+
+            if age_group:
+                self.update(age_group=age_group)
+                return True
+
+            return False
+
+        return False
 
     def process_message(
         self,
@@ -257,47 +298,55 @@ class PatientIntakeCollector:
 
         normalized_message = self._normalize_message(message)
 
-        # Remember which required fields were missing before
-        # processing this turn.
         missing_before = self.missing_fields()
 
-        # First extract information explicitly stated in the message.
         self.extract_from_message(normalized_message)
 
         missing_after_extraction = self.missing_fields()
 
-        # Only use contextual follow-up interpretation when the
-        # message did not explicitly provide any missing field.
-        #
-        # Example:
-        # "I have a headache." -> symptoms are extracted,
-        # so we should NOT treat the whole sentence as onset.
-        #
-        # Example:
-        # "Yesterday." -> no explicit field is extracted,
-        # so it is interpreted as the answer to the onset question.
-        if (
-            missing_before
-            and len(missing_after_extraction) == len(missing_before)
-        ):
-            self._extract_follow_up_answer(normalized_message)
+        progress_made = len(missing_after_extraction) < len(missing_before)
+
+        if missing_before and not progress_made:
+            progress_made = self._extract_follow_up_answer(
+                normalized_message
+            )
 
         missing_fields = self.missing_fields()
         ready = not missing_fields
 
         if ready:
-            response = (
-                "Thank you. I have collected the required patient "
-                "information. The information can now be passed to "
-                "the recommendation module."
-            )
-
             return PatientIntakeTurnResult(
-                response=response,
+                response=(
+                    "Thank you. I have collected the required patient "
+                    "information. The information can now be passed to "
+                    "the recommendation module."
+                ),
                 missing_fields=[],
                 ready=True,
                 context=self.get_backend_record(),
                 handoff=True,
+                fallback=False,
+            )
+
+        if not progress_made and missing_fields:
+            active_field = missing_fields[0]
+
+            fallback = self.FALLBACK_MESSAGES.get(
+                active_field,
+                "Please provide the missing patient information.",
+            )
+
+            next_question = self.next_question()
+
+            response = f"{fallback} {next_question}"
+
+            return PatientIntakeTurnResult(
+                response=response,
+                missing_fields=missing_fields,
+                ready=False,
+                context=None,
+                handoff=False,
+                fallback=True,
             )
 
         return PatientIntakeTurnResult(
@@ -306,6 +355,7 @@ class PatientIntakeCollector:
             ready=False,
             context=None,
             handoff=False,
+            fallback=False,
         )
 
     def missing_fields(self) -> list[str]:
@@ -330,28 +380,12 @@ class PatientIntakeCollector:
         return not self.missing_fields()
 
     def get_context(self) -> dict[str, str | None]:
-        """
-        Return structured patient data.
-
-        This method is kept for backward compatibility with the
-        existing dialogue and recommendation interfaces.
-        """
+        """Return structured patient data."""
 
         return self.get_backend_record()
 
     def get_backend_record(self) -> dict[str, str | None]:
-        """
-        Return the finalized patient record for backend storage handoff.
-
-        Required fields:
-        - primary_complaint
-        - symptom_onset
-        - age_group
-
-        Optional fields:
-        - secondary_history
-        - additional_details
-        """
+        """Return finalized patient record for backend storage handoff."""
 
         if not self.is_ready():
             raise ValueError(
@@ -380,4 +414,3 @@ class PatientIntakeCollector:
             return "What is your age group?"
 
         return None
-
