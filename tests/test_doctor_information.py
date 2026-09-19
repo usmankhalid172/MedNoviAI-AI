@@ -202,3 +202,39 @@ def test_context_switches_to_new_doctor():
 
     assert context.active_doctor == "Dr. Sara"
     assert context.active_doctor_id == "DOC-002"
+
+from src.doctor_information.prompts import (
+    APPOINTMENT_GUIDANCE_PROMPT,
+    DOCTOR_SEARCH_GUIDANCE_PROMPT,
+)
+
+
+def test_doctor_search_prompt_has_frontend_response_contract():
+    assert "response_type" in DOCTOR_SEARCH_GUIDANCE_PROMPT
+    assert "message" in DOCTOR_SEARCH_GUIDANCE_PROMPT
+    assert "next_step" in DOCTOR_SEARCH_GUIDANCE_PROMPT
+    assert "requires_backend_data" in DOCTOR_SEARCH_GUIDANCE_PROMPT
+    assert "valid JSON only" in DOCTOR_SEARCH_GUIDANCE_PROMPT
+    assert "Do not add extra fields" in DOCTOR_SEARCH_GUIDANCE_PROMPT
+
+
+def test_doctor_search_prompt_enforces_grounded_data():
+    assert "Never invent doctors" in DOCTOR_SEARCH_GUIDANCE_PROMPT
+    assert "requires_backend_data to true" in DOCTOR_SEARCH_GUIDANCE_PROMPT
+    assert "Do not diagnose the patient" in DOCTOR_SEARCH_GUIDANCE_PROMPT
+
+
+def test_appointment_prompt_has_frontend_response_contract():
+    assert "response_type" in APPOINTMENT_GUIDANCE_PROMPT
+    assert "message" in APPOINTMENT_GUIDANCE_PROMPT
+    assert "next_step" in APPOINTMENT_GUIDANCE_PROMPT
+    assert "requires_backend_data" in APPOINTMENT_GUIDANCE_PROMPT
+    assert "valid JSON only" in APPOINTMENT_GUIDANCE_PROMPT
+    assert "Do not add extra fields" in APPOINTMENT_GUIDANCE_PROMPT
+
+
+def test_appointment_prompt_enforces_booking_safety():
+    assert "Never invent appointment slots" in APPOINTMENT_GUIDANCE_PROMPT
+    assert "requested dates and times as patient preferences" in APPOINTMENT_GUIDANCE_PROMPT
+    assert "Never claim that an appointment is booked" in APPOINTMENT_GUIDANCE_PROMPT
+    assert "requires_backend_data to true" in APPOINTMENT_GUIDANCE_PROMPT
