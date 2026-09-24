@@ -423,3 +423,140 @@ def test_process_message_uses_dialogue_policy_next_question():
     ]
     assert result.ready is False
     assert result.handoff is False
+
+# ---------------------------------------------------------
+# Sep 15: Graceful fallback and active dialogue state
+# ---------------------------------------------------------
+
+
+def test_off_topic_message_preserves_active_symptom_question():
+    policy = PatientDialoguePolicy()
+
+    result = policy.process_message(
+        "What time does the clinic open?"
+    )
+
+    assert result.ready is False
+    assert result.handoff is False
+
+    assert result.missing_fields == [
+        "symptoms",
+        "symptom_onset",
+        "age_group",
+    ]
+
+    assert policy.state.symptoms is None
+    assert policy.state.symptom_onset is None
+    assert policy.state.age_group is None
+
+    assert "What symptoms are you experiencing?" in result.response
+
+
+def test_off_topic_message_does_not_destroy_previous_information():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+
+    result = policy.process_message(
+        "Can you tell me the clinic address?"
+    )
+
+    assert result.ready is False
+    assert result.handoff is False
+
+    assert policy.state.symptoms == "a headache"
+    assert policy.state.symptom_onset is None
+    assert policy.state.age_group is None
+
+    assert result.missing_fields == [
+        "symptom_onset",
+        "age_group",
+    ]
+
+
+def test_ambiguous_onset_keeps_dialogue_state_active():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+
+    result = policy.process_message("Not sure.")
+
+    assert result.ready is False
+    assert result.handoff is False
+
+    assert policy.state.symptoms == "a headache"
+    assert policy.state.symptom_onset is None
+    assert policy.state.age_group is None
+
+    assert result.missing_fields == [
+        "symptom_onset",
+        "age_group",
+    ]
+
+    assert "When did your symptoms start?" in result.response
+
+
+def test_valid_onset_after_ambiguous_answer_continues():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+    policy.process_message("Not sure.")
+
+    result = policy.process_message("Two days ago.")
+
+    assert result.ready is False
+    assert result.handoff is False
+
+    assert policy.state.symptoms == "a headache"
+    assert policy.state.symptom_onset == "Two days ago"
+    assert policy.state.age_group is None
+
+    assert result.missing_fields == ["age_group"]
+    assert result.response == "What is your age group?"
+
+
+def test_ambiguous_age_does_not_trigger_handoff():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+    policy.process_message("Yesterday.")
+
+    result = policy.process_message("I don't know.")
+
+    assert result.ready is False
+    assert result.handoff is False
+    assert result.patient_record is None
+
+    assert policy.state.symptoms == "a headache"
+    assert policy.state.symptom_onset == "Yesterday"
+    assert policy.state.age_group is None
+
+    assert result.missing_fields == ["age_group"]
+
+
+def test_valid_age_after_ambiguous_answer_completes_handoff():
+    policy = PatientDialoguePolicy()
+
+    policy.process_message("I have a headache.")
+    policy.process_message("Yesterday.")
+    policy.process_message("I don't know.")
+
+    result = policy.process_message("I am 22.")
+
+    assert result.ready is True
+    assert result.handoff is True
+    assert result.missing_fields == []
+
+    assert result.context == {
+        "symptoms": "a headache",
+        "symptom_onset": "Yesterday",
+        "age_group": "adult",
+    }
+
+    assert result.patient_record == {
+        "primary_complaint": "a headache",
+        "symptom_onset": "Yesterday",
+        "age_group": "adult",
+        "secondary_history": None,
+        "additional_details": None,
+    }
