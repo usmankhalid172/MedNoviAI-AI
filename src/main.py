@@ -21,6 +21,8 @@ from .config import get_settings
 from .errors import register_exception_handlers
 from .expense_categorization.router import router as categorization_router
 from .financial_assistant.router import router as chatbot_router
+from .financial_assistant.spending_pattern_router import router as spending_pattern_router
+from .financial_assistant.anomaly_detection_router import router as anomaly_router
 from .middleware import CorrelationIdMiddleware, RequestLoggingMiddleware
 from .schemas import HealthResponse, VersionResponse
 
@@ -60,3 +62,5 @@ def version() -> VersionResponse:
 app.include_router(infra_router)
 app.include_router(chatbot_router)
 app.include_router(categorization_router)
+app.include_router(spending_pattern_router)
+app.include_router(anomaly_router)
