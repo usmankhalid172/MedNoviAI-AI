@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from src.appointment_assistance.patient_intake import (
@@ -514,7 +516,8 @@ def test_structured_patient_data_includes_optional_information():
         "additional_details": "Pain is worse in the morning",
     }
 
-    # ---------------------------------------------------------
+
+# ---------------------------------------------------------
 # Sep 13: Finalized multi-turn intake and backend handoff
 # ---------------------------------------------------------
 
@@ -654,6 +657,25 @@ def test_multi_turn_data_is_preserved_for_backend_handoff():
     assert result.context == {
         "primary_complaint": "a cough",
         "symptom_onset": "Two days ago",
+        "age_group": "adult",
+        "secondary_history": None,
+        "additional_details": None,
+    }
+
+
+def test_completed_intake_produces_structured_backend_record():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache")
+    collector.process_message("Yesterday")
+    result = collector.process_message("25")
+
+    assert result.ready is True
+    assert result.handoff is True
+
+    assert result.context == {
+        "primary_complaint": "a headache",
+        "symptom_onset": "Yesterday",
         "age_group": "adult",
         "secondary_history": None,
         "additional_details": None,
@@ -859,6 +881,23 @@ def test_off_topic_message_does_not_reset_existing_dialogue_state():
 
     assert result.missing_fields == ["age_group"]
 
+
+def test_off_topic_response_preserves_previous_information():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache")
+
+    result = collector.process_message(
+        "What time does the clinic close?"
+    )
+
+    assert result.ready is False
+    assert "symptom_onset" in result.missing_fields
+    assert collector.info.symptoms == "a headache"
+    assert collector.info.symptom_onset is None
+    assert collector.info.age_group is None
+
+
 def test_ambiguous_symptom_response_keeps_symptoms_missing():
     collector = PatientIntakeCollector()
 
@@ -918,7 +957,9 @@ def test_valid_response_after_ambiguous_response_completes_intake():
 
     collector.process_message("I have a headache.")
     collector.process_message("not sure")
-    result = collector.process_message("Since yesterday. I am an adult.")
+    result = collector.process_message(
+        "Since yesterday. I am an adult."
+    )
 
     assert result.ready is True
     assert result.handoff is True
@@ -934,11 +975,9 @@ def test_ambiguous_response_does_not_enter_backend_record():
 
     assert collector.info.symptoms is None
 
-    try:
+    with pytest.raises(ValueError):
         collector.get_backend_record()
-        assert False, "Incomplete intake should not produce a backend record"
-    except ValueError:
-        pass
+
 
 def test_ambiguous_symptom_response_returns_clarifying_prompt():
     collector = PatientIntakeCollector()
@@ -980,3 +1019,326 @@ def test_ambiguous_age_response_returns_clarifying_prompt():
     assert "child" in result.response
     assert "adult" in result.response
     assert "What is your age group?" in result.response
+
+
+def test_ambiguous_response_preserves_previous_information():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache")
+
+    result = collector.process_message("I do not know")
+
+    assert result.ready is False
+    assert "symptom_onset" in result.missing_fields
+    assert collector.info.symptoms == "a headache"
+    assert collector.info.symptom_onset is None
+
+
+# ---------------------------------------------------------
+# Sep 18-21: Final patient intake dialogue validation
+# ---------------------------------------------------------
+
+
+def test_empty_message_is_rejected():
+    collector = PatientIntakeCollector()
+
+    with pytest.raises(ValueError):
+        collector.process_message("")
+
+
+def test_non_string_message_is_rejected():
+    collector = PatientIntakeCollector()
+
+    with pytest.raises(ValueError):
+        collector.process_message(None)
+
+
+def test_whitespace_only_message_is_rejected():
+    collector = PatientIntakeCollector()
+
+    with pytest.raises(ValueError):
+        collector.process_message("   ")
+
+
+def test_multi_turn_state_continuity_is_preserved_after_multiple_fallbacks():
+    collector = PatientIntakeCollector()
+
+    result = collector.process_message("I have a headache.")
+
+    assert result.missing_fields == [
+        "symptom_onset",
+        "age_group",
+    ]
+
+    result = collector.process_message("I don't know")
+
+    assert result.fallback is True
+    assert collector.info.symptoms == "a headache"
+    assert collector.info.symptom_onset is None
+    assert collector.info.age_group is None
+
+    result = collector.process_message(
+        "What time does the clinic close?"
+    )
+
+    assert result.fallback is True
+    assert collector.info.symptoms == "a headache"
+    assert collector.info.symptom_onset is None
+    assert collector.info.age_group is None
+
+    result = collector.process_message("Yesterday")
+
+    assert result.missing_fields == ["age_group"]
+    assert collector.info.symptoms == "a headache"
+    assert collector.info.symptom_onset == "Yesterday"
+
+    result = collector.process_message("25")
+
+    assert result.ready is True
+    assert result.handoff is True
+    assert result.missing_fields == []
+
+    assert result.context == {
+        "primary_complaint": "a headache",
+        "symptom_onset": "Yesterday",
+        "age_group": "adult",
+        "secondary_history": None,
+        "additional_details": None,
+    }
+
+
+def test_completed_backend_record_contains_all_storage_fields():
+    collector = PatientIntakeCollector()
+
+    collector.process_message(
+        "I have a headache. Since yesterday. I am an adult."
+    )
+
+    record = collector.get_backend_record()
+
+    assert set(record.keys()) == {
+        "primary_complaint",
+        "symptom_onset",
+        "age_group",
+        "secondary_history",
+        "additional_details",
+    }
+
+
+def test_completed_backend_record_contains_optional_values_when_collected():
+    collector = PatientIntakeCollector()
+
+    collector.update(
+        symptoms="headache",
+        symptom_onset="since yesterday",
+        age_group="adult",
+        secondary_history="History of migraine",
+        additional_details="Pain is worse at night",
+    )
+
+    record = collector.get_backend_record()
+
+    assert record["primary_complaint"] == "headache"
+    assert record["symptom_onset"] == "since yesterday"
+    assert record["age_group"] == "adult"
+    assert record["secondary_history"] == "History of migraine"
+    assert record["additional_details"] == "Pain is worse at night"
+
+
+def test_backend_record_is_not_available_before_required_fields_are_complete():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache")
+    collector.process_message("Yesterday")
+
+    assert collector.is_ready() is False
+
+    with pytest.raises(ValueError):
+        collector.get_backend_record()
+
+
+def test_backend_record_becomes_available_after_final_required_answer():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache")
+    collector.process_message("Yesterday")
+
+    result = collector.process_message("25")
+
+    assert result.ready is True
+    assert result.handoff is True
+
+    record = collector.get_backend_record()
+
+    assert record == {
+        "primary_complaint": "a headache",
+        "symptom_onset": "Yesterday",
+        "age_group": "adult",
+        "secondary_history": None,
+        "additional_details": None,
+    }
+
+
+def test_completed_backend_record_can_be_serialized_to_json():
+    collector = PatientIntakeCollector()
+
+    collector.process_message(
+        "I have a headache. Since yesterday. I am an adult."
+    )
+
+    record = collector.get_backend_record()
+
+    serialized = json.dumps(record)
+
+    restored = json.loads(serialized)
+
+    assert restored == record
+
+
+def test_backend_json_contains_expected_storage_fields():
+    collector = PatientIntakeCollector()
+
+    collector.process_message(
+        "I have a headache. Since yesterday. I am an adult."
+    )
+
+    backend_json = collector.get_backend_json()
+
+    record = json.loads(backend_json)
+
+    assert record == {
+        "primary_complaint": "a headache",
+        "symptom_onset": "Since yesterday",
+        "age_group": "adult",
+        "secondary_history": None,
+        "additional_details": None,
+    }
+
+
+def test_backend_json_preserves_optional_information():
+    collector = PatientIntakeCollector()
+
+    collector.update(
+        symptoms="headache",
+        symptom_onset="since yesterday",
+        age_group="adult",
+        secondary_history="History of migraine",
+        additional_details="Pain is worse at night",
+    )
+
+    backend_json = collector.get_backend_json()
+
+    record = json.loads(backend_json)
+
+    assert record["secondary_history"] == "History of migraine"
+    assert record["additional_details"] == "Pain is worse at night"
+
+
+def test_dialogue_history_preserves_patient_messages_and_responses():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache")
+    collector.process_message("Yesterday")
+    collector.process_message("25")
+
+    history = collector.get_dialogue_history()
+
+    assert len(history) == 3
+
+    assert history[0]["message"] == "I have a headache"
+    assert history[0]["ready"] == "False"
+
+    assert history[1]["message"] == "Yesterday"
+    assert history[1]["ready"] == "False"
+
+    assert history[2]["message"] == "25"
+    assert history[2]["ready"] == "True"
+    assert history[2]["handoff"] == "True"
+
+
+def test_dialogue_history_preserves_fallback_turn():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a headache")
+    result = collector.process_message("I don't know")
+
+    history = collector.get_dialogue_history()
+
+    assert result.fallback is True
+    assert len(history) == 2
+
+    assert history[1]["message"] == "I don't know"
+    assert history[1]["ready"] == "False"
+    assert history[1]["handoff"] == "False"
+
+
+def test_fallback_does_not_modify_existing_patient_record():
+    collector = PatientIntakeCollector()
+
+    collector.process_message(
+        "I have a fever. Since yesterday."
+    )
+
+    before = {
+        "symptoms": collector.info.symptoms,
+        "symptom_onset": collector.info.symptom_onset,
+        "age_group": collector.info.age_group,
+    }
+
+    collector.process_message("I don't know")
+    collector.process_message("What time does the clinic close?")
+
+    after = {
+        "symptoms": collector.info.symptoms,
+        "symptom_onset": collector.info.symptom_onset,
+        "age_group": collector.info.age_group,
+    }
+
+    assert after == before
+
+
+def test_state_continuity_after_off_topic_and_ambiguous_messages():
+    collector = PatientIntakeCollector()
+
+    collector.process_message("I have a fever.")
+
+    collector.process_message("What time does the clinic close?")
+    collector.process_message("I don't know")
+    collector.process_message("Yesterday")
+
+    assert collector.info.symptoms == "a fever"
+    assert collector.info.symptom_onset == "Yesterday"
+    assert collector.info.age_group is None
+
+    result = collector.process_message("adult")
+
+    assert result.ready is True
+    assert result.handoff is True
+
+    assert result.context == {
+        "primary_complaint": "a fever",
+        "symptom_onset": "Yesterday",
+        "age_group": "adult",
+        "secondary_history": None,
+        "additional_details": None,
+    }
+
+
+def test_final_handoff_contains_backend_storage_structure():
+    collector = PatientIntakeCollector()
+
+    result = collector.process_message(
+        "I have a cough. Two days ago. I am 25."
+    )
+
+    assert result.ready is True
+    assert result.handoff is True
+    assert result.context == collector.get_backend_record()
+
+    assert set(result.context.keys()) == {
+        "primary_complaint",
+        "symptom_onset",
+        "age_group",
+        "secondary_history",
+        "additional_details",
+    }
