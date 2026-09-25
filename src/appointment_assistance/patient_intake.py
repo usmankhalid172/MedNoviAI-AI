@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-
+import json
 import re
 
 
@@ -55,6 +55,39 @@ class PatientIntakeCollector:
         ),
     }
 
+    CLARIFICATION_MESSAGES = {
+        "symptoms": (
+            "I need a little more information about your symptoms. "
+            "Please describe what you are experiencing. "
+            "What symptoms are you experiencing?"
+        ),
+        "symptom_onset": (
+            "I need to know when your symptoms started. "
+            "For example, you can say 'yesterday' or 'two days ago'. "
+            "When did your symptoms start?"
+        ),
+        "age_group": (
+            "I still need your age group. "
+            "You can provide your age or say child, teenager, adult, or senior. "
+            "What is your age group?"
+        ),
+    }
+
+    OFF_TOPIC_MESSAGES = {
+        "symptoms": (
+            "Let's continue with your patient information. "
+            "Please describe the symptoms you are experiencing."
+        ),
+        "symptom_onset": (
+            "Let's continue with your patient information. "
+            "Please tell me when your symptoms started."
+        ),
+        "age_group": (
+            "Let's continue with your patient information. "
+            "Please provide your age or age group."
+        ),
+    }
+
     AMBIGUOUS_RESPONSES = {
         "i don't know",
         "i dont know",
@@ -70,10 +103,37 @@ class PatientIntakeCollector:
         "cannot say",
         "can't say",
         "cant say",
+        "i don't remember",
+        "i dont remember",
+        "not certain",
+        "uncertain",
+    }
+
+    OFF_TOPIC_PHRASES = {
+        "what time is it",
+        "what is the time",
+        "what day is it",
+        "who are you",
+        "what are you",
+        "where are you",
+        "thank you",
+        "thanks",
+        "hello",
+        "hi",
+        "hey",
+        "good morning",
+        "good afternoon",
+        "good evening",
+        "okay thanks",
+        "ok thanks",
     }
 
     def __init__(self) -> None:
         self.info = PatientIntakeInformation()
+
+        # Dialogue history used to maintain state continuity.
+        # The collected patient information remains the source of truth.
+        self.dialogue_history: list[dict[str, str | None]] = []
 
     def update(
         self,
@@ -120,7 +180,48 @@ class PatientIntakeCollector:
 
         normalized_message = self._normalize_message(message).lower()
 
-        return normalized_message in self.AMBIGUOUS_RESPONSES
+        if normalized_message in self.AMBIGUOUS_RESPONSES:
+            return True
+
+        ambiguous_patterns = (
+            r"^i\s+(really\s+)?don't\s+know$",
+            r"^i\s+(really\s+)?dont\s+know$",
+            r"^i\s+(really\s+)?am\s+not\s+sure$",
+            r"^i\s+(really\s+)?['’]?m\s+not\s+sure$",
+            r"^i\s+cannot\s+say$",
+            r"^i\s+can't\s+say$",
+            r"^i\s+cant\s+say$",
+            r"^i\s+don't\s+remember$",
+            r"^i\s+dont\s+remember$",
+            r"^not\s+really\s+sure$",
+            r"^not\s+quite\s+sure$",
+        )
+
+        return any(
+            re.fullmatch(pattern, normalized_message)
+            for pattern in ambiguous_patterns
+        )
+
+    def _is_off_topic_response(self, message: str) -> bool:
+        """Return True when a message is clearly unrelated to patient intake."""
+
+        normalized_message = self._normalize_message(message).lower()
+
+        if normalized_message in self.OFF_TOPIC_PHRASES:
+            return True
+
+        off_topic_patterns = (
+            r"^what\s+time\s+does\s+.*\s+(close|open)$",
+            r"^what\s+is\s+your\s+name\??$",
+            r"^who\s+are\s+you\??$",
+            r"^can\s+you\s+help\s+me\s+with\s+.*$",
+            r"^tell\s+me\s+about\s+.*$",
+        )
+
+        return any(
+            re.fullmatch(pattern, normalized_message)
+            for pattern in off_topic_patterns
+        )
 
     def _extract_age_group(self, message: str) -> str | None:
         """Extract or derive an age group from a patient message."""
@@ -206,7 +307,6 @@ class PatientIntakeCollector:
         """Extract patient intake information from a message."""
 
         normalized_message = self._normalize_message(message)
-
         extracted = {}
 
         # Primary complaint / symptoms
@@ -331,32 +431,35 @@ class PatientIntakeCollector:
         """
         Process one patient message using multi-turn dialogue context.
 
-        The collector extracts explicit information first, then uses
-        the active missing field to interpret valid short follow-up
-        answers. Ambiguous or off-topic input does not overwrite
+        Explicit information is extracted first. If no progress is made,
+        the active missing field is used to interpret short follow-up
+        answers. Ambiguous and off-topic responses never overwrite
         existing patient information.
         """
 
         normalized_message = self._normalize_message(message)
-
-        # Remember which required fields were missing before
-        # processing this turn.
         missing_before = self.missing_fields()
 
-        # First extract information explicitly stated in the message.
-        self.extract_from_message(normalized_message)
+        # Explicitly handle clearly ambiguous/off-topic messages first.
+        is_ambiguous = self._is_ambiguous_response(normalized_message)
+        is_off_topic = self._is_off_topic_response(normalized_message)
 
-        missing_after_extraction = self.missing_fields()
+        # Extract explicit patient information only when the message is
+        # not clearly off-topic or ambiguous.
+        progress_made = False
 
-        progress_made = len(missing_after_extraction) < len(missing_before)
+        if not is_ambiguous and not is_off_topic:
+            self.extract_from_message(normalized_message)
 
-        # Only use contextual follow-up interpretation when the
-        # message did not explicitly provide any missing field.
-        #
-        # Explicitly ambiguous responses are skipped so they cannot
-        # accidentally be interpreted as patient information.
-        if missing_before and not progress_made:
-            if not self._is_ambiguous_response(normalized_message):
+            missing_after_extraction = self.missing_fields()
+
+            progress_made = (
+                len(missing_after_extraction)
+                < len(missing_before)
+            )
+
+            # Use active-field context for short follow-up answers.
+            if missing_before and not progress_made:
                 progress_made = self._extract_follow_up_answer(
                     normalized_message
                 )
@@ -371,7 +474,7 @@ class PatientIntakeCollector:
                 "the recommendation module."
             )
 
-            return PatientIntakeTurnResult(
+            result = PatientIntakeTurnResult(
                 response=response,
                 missing_fields=[],
                 ready=True,
@@ -380,18 +483,41 @@ class PatientIntakeCollector:
                 fallback=False,
             )
 
+            self._record_dialogue_turn(
+                normalized_message,
+                result,
+            )
+
+            return result
+
         if not progress_made and missing_fields:
             active_field = missing_fields[0]
 
-            fallback = self.FALLBACK_MESSAGES.get(
-                active_field,
-                "Please provide the missing patient information.",
-            )
+            if is_ambiguous:
+                response = self.CLARIFICATION_MESSAGES.get(
+                    active_field,
+                    self.FALLBACK_MESSAGES.get(
+                        active_field,
+                        "Please provide the missing patient information.",
+                    ),
+                )
 
-            next_question = self.next_question()
-            response = f"{fallback} {next_question}"
+            elif is_off_topic:
+                response = self.OFF_TOPIC_MESSAGES.get(
+                    active_field,
+                    "Let's continue with the patient information.",
+                )
 
-            return PatientIntakeTurnResult(
+            else:
+                fallback = self.FALLBACK_MESSAGES.get(
+                    active_field,
+                    "Please provide the missing patient information.",
+                )
+
+                next_question = self.next_question()
+                response = f"{fallback} {next_question}"
+
+            result = PatientIntakeTurnResult(
                 response=response,
                 missing_fields=missing_fields,
                 ready=False,
@@ -400,7 +526,14 @@ class PatientIntakeCollector:
                 fallback=True,
             )
 
-        return PatientIntakeTurnResult(
+            self._record_dialogue_turn(
+                normalized_message,
+                result,
+            )
+
+            return result
+
+        result = PatientIntakeTurnResult(
             response=self.next_question(),
             missing_fields=missing_fields,
             ready=False,
@@ -408,6 +541,44 @@ class PatientIntakeCollector:
             handoff=False,
             fallback=False,
         )
+
+        self._record_dialogue_turn(
+            normalized_message,
+            result,
+        )
+
+        return result
+
+    def _record_dialogue_turn(
+        self,
+        message: str,
+        result: PatientIntakeTurnResult,
+    ) -> None:
+        """
+        Store lightweight dialogue history for state continuity.
+
+        The history is informational only. PatientIntakeInformation
+        remains the source of truth for backend data.
+        """
+
+        self.dialogue_history.append(
+            {
+                "message": message,
+                "response": result.response,
+                "ready": str(result.ready),
+                "handoff": str(result.handoff),
+            }
+        )
+
+    def get_dialogue_history(self) -> list[dict[str, str | None]]:
+        """
+        Return the current dialogue history.
+
+        A copy is returned so callers cannot accidentally modify
+        the internal conversation state.
+        """
+
+        return list(self.dialogue_history)
 
     def missing_fields(self) -> list[str]:
         """Return required intake information that is still missing."""
@@ -443,6 +614,8 @@ class PatientIntakeCollector:
     def get_backend_record(self) -> dict[str, str | None]:
         """
         Return the finalized patient record for backend storage handoff.
+
+        The dictionary uses stable keys expected by the backend layer.
         """
 
         if not self.is_ready():
@@ -458,6 +631,19 @@ class PatientIntakeCollector:
             "secondary_history": self.info.secondary_history,
             "additional_details": self.info.additional_details,
         }
+
+    def get_backend_json(self) -> str:
+        """
+        Return the completed patient record as JSON.
+
+        Python None values are serialized as JSON null so the resulting
+        structure can be passed cleanly to a .NET backend.
+        """
+
+        return json.dumps(
+            self.get_backend_record(),
+            ensure_ascii=False,
+        )
 
     def next_question(self) -> str | None:
         """Return the next question needed to complete required intake."""
