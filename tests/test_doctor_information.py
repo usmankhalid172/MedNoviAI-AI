@@ -300,3 +300,22 @@ def test_context_preserves_active_doctor_and_query_history():
         "Tell me about Dr. Ahmed's profile",
         "What else can you tell me?",
     ]
+
+def test_context_preserves_active_specialty_after_profile_lookup():
+    doctor = DoctorProfile(
+        doctor_id="DOC-001",
+        doctor_name="Dr. Ahmed",
+        specialty="Cardiology",
+    )
+    context = DoctorConversationContext()
+    service = DoctorInformationService()
+
+    service.process(
+        "Tell me about Dr. Ahmed's profile",
+        doctor=doctor,
+        context=context,
+    )
+
+    assert context.active_doctor == "Dr. Ahmed"
+    assert context.active_doctor_id == "DOC-001"
+    assert context.active_specialty == "Cardiology"
