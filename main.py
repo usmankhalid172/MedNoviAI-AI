@@ -1,9 +1,16 @@
+from dotenv import load_dotenv
+load_dotenv("healthcare-platform/.env")
+
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from financial_health_router import router
+from ai_core.routers import chat, intake, recommend
 
 app = FastAPI(title="MedNoviAI AI Service")
 app.include_router(router)
+app.include_router(chat.router)
+app.include_router(intake.router)
+app.include_router(recommend.router)
 
 
 @app.get("/")
