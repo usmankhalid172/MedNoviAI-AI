@@ -25,6 +25,8 @@ class DoctorInformationService:
         if context is None:
             context = DoctorConversationContext()
 
+        context.previous_queries.append(query)
+
         intent = detect_intent(query)
 
         if intent == DoctorInformationIntent.UNKNOWN:

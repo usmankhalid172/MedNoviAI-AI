@@ -238,3 +238,65 @@ def test_appointment_prompt_enforces_booking_safety():
     assert "requested dates and times as patient preferences" in APPOINTMENT_GUIDANCE_PROMPT
     assert "Never claim that an appointment is booked" in APPOINTMENT_GUIDANCE_PROMPT
     assert "requires_backend_data to true" in APPOINTMENT_GUIDANCE_PROMPT
+
+def test_context_preserves_previous_patient_queries():
+    context = DoctorConversationContext()
+    service = DoctorInformationService()
+
+    service.process(
+        "Tell me about Dr. Ahmed",
+        context=context,
+    )
+    service.process(
+        "What are his working hours?",
+        context=context,
+    )
+
+    assert context.previous_queries == [
+        "Tell me about Dr. Ahmed",
+        "What are his working hours?",
+    ]
+
+
+def test_context_preserves_queries_across_multiple_turns():
+    context = DoctorConversationContext()
+    service = DoctorInformationService()
+
+    queries = [
+        "Tell me about Dr. Ahmed",
+        "What is his specialty?",
+        "What are his qualifications?",
+        "When is he available?",
+    ]
+
+    for query in queries:
+        service.process(query, context=context)
+
+    assert context.previous_queries == queries
+
+
+def test_context_preserves_active_doctor_and_query_history():
+    doctor = DoctorProfile(
+        doctor_id="DOC-001",
+        doctor_name="Dr. Ahmed",
+        specialty="Cardiology",
+    )
+    context = DoctorConversationContext()
+    service = DoctorInformationService()
+
+    service.process(
+        "Tell me about Dr. Ahmed's profile",
+        doctor=doctor,
+        context=context,
+    )
+    service.process(
+        "What else can you tell me?",
+        context=context,
+    )
+
+    assert context.active_doctor == "Dr. Ahmed"
+    assert context.active_doctor_id == "DOC-001"
+    assert context.previous_queries == [
+        "Tell me about Dr. Ahmed's profile",
+        "What else can you tell me?",
+    ]
