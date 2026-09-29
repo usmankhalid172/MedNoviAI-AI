@@ -3,7 +3,7 @@
 **Assignee:** Zainab Raza  
 **Role:** AI Safety & Guardrails Engineer  
 **Branch:** `feature/sprint1-safety-guardrails-zainab`  
-**PR Title:** `Task-sept15-safety-guardrails-zainabraza`
+**PR Title:** `Task-sept18-safety-guardrails-zainabraza`
 
 ## 1. Objective
 
@@ -129,51 +129,3 @@ Emergency / Serious / Prescription / Treatment / Diagnosis / Unclear?
 Unsafe diagnosis/prescription/treatment?
     ├── YES → Safe deterministic refusal
     └── NO  → Return informational response
-
-### Sept 16 – Safety Guardrail Regression & Escalation Review
-
-### Objective
-
-Test and refine the Healthcare Assistant safety layer against:
-
-- diagnostic requests;
-- prescription and dosage recommendations;
-- personalized treatment requests;
-- unsupported or unclear medical queries;
-- serious and urgent health scenarios;
-- emergency health scenarios.
-
-The goal is to verify that unsafe requests are intercepted before normal AI
-processing and that emergency or urgent situations receive appropriate
-professional-care escalation.
-
-### Safety Categories
-
-The current deterministic safety categories are:
-
-1. Emergency
-2. Serious / urgent symptoms
-3. Prescription / medication request
-4. Personalized treatment request
-5. Diagnosis request
-6. Unclear / unsupported medical query
-7. Normal informational request
-
-### Priority
-
-The safety layer uses the following priority:
-
-```text
-Emergency
-    ↓
-Serious / Urgent
-    ↓
-Prescription
-    ↓
-Personalized Treatment
-    ↓
-Diagnosis
-    ↓
-Unclear / Unsupported
-    ↓
-Normal Informational Request

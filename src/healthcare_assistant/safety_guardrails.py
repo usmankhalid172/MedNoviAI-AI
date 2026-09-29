@@ -32,7 +32,13 @@ EMERGENCY_PATTERNS = (
     r"\b(?:lips?|tongue)\s+(?:are|is)\s+swelling\b",
     r"\bhaving\s+a\s+seizure\b",
     r"\bseizure\b",
+
+    # Additional critical emergency phrases
+    r"\b(?:my\s+)?(?:lips?|face|skin)\s+(?:are|is)\s+(?:turning\s+)?(?:blue|bluish|gray|grey)\b",    
+    r"\bsevere\s+(?:or\s+sudden\s+)?confusion\b",
+    r"\b(?:cannot|can't)\s+stay\s+awake\b",
 )
+
 
 SERIOUS_SYMPTOM_PATTERNS = (
     r"\bmy\s+symptoms?\s+(?:are\s+)?getting\s+worse\b",
@@ -80,6 +86,10 @@ PRESCRIPTION_PATTERNS = (
     r"\bshould\s+i\s+take\s+(?:antibiotics|an\s+antibiotic)\b",
     r"\bprescribe\s+(?:me|a|some)\b",
     r"\bprescribe\s+(?:medicine|medication|a\s+drug)\b",
+
+    # Additional prescription and prompt-injection variants
+    r"\btell\s+me\s+what\s+(?:medicine|medication|drug)\s+should\s+i\s+(?:take|use)\b",
+    r"\btell\s+me\s+which\s+(?:medicine|medication|drug)\s+should\s+i\s+(?:take|use)\b",
 )
 
 
@@ -94,6 +104,8 @@ PERSONALIZED_TREATMENT_PATTERNS = (
     r"\bwhat\s+should\s+i\s+do\s+to\s+treat\s+(?:this|it|my\s+symptoms?|my\s+condition)\b",
     r"\bwhat\s+should\s+i\s+do\s+to\s+cure\s+(?:this|it|my\s+symptoms?|my\s+condition)\b",
     r"\btell\s+me\s+how\s+to\s+treat\s+(?:this|it|my\s+symptoms?|my\s+condition)\b",
+    r"\btell\s+me\s+what\s+treatment\s+should\s+i\s+follow\b",
+    r"\btell\s+me\s+which\s+treatment\s+should\s+i\s+follow\b",
 )
 
 
@@ -114,6 +126,10 @@ DIAGNOSIS_PATTERNS = (
     r"\bcould\s+(?:these|those)\s+symptoms\s+(?:mean|indicate|suggest)\b",
     r"\bmight\s+(?:these|those)\s+symptoms\s+(?:mean|indicate|suggest)\b",
     r"\bmay\s+(?:these|those)\s+symptoms\s+(?:mean|indicate|suggest)\b",
+
+    r"\bdoes\s+this\s+mean\s+i\s+have\b",
+    r"\bare\s+my\s+symptoms?\s+(?:a\s+sign|signs)\s+of\b",
+    r"\bcould\s+i\s+have\s+(?:covid|diabetes|cancer|pneumonia|flu|asthma|an?\s+infection|a\s+heart\s+attack|a\s+stroke)\b",
 
     r"\bdo\s+i\s+have\s+(?:covid|diabetes|cancer|pneumonia|flu|asthma)\b",
     r"\bdo\s+i\s+definitely\s+have\b",
@@ -153,6 +169,13 @@ UNSAFE_DIAGNOSIS_OUTPUT_PATTERNS = (
     r"\byou\s+have\s+(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke|an?\s+infection)\b",
     r"\bthis\s+(?:is|looks\s+like|appears\s+to\s+be)\s+(?:definitely|probably|likely)?\s*(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke)\b",
     r"\byour\s+symptoms?\s+(?:prove|confirm|show)\s+(?:that\s+)?you\s+have\b",
+
+    # Additional unsafe diagnosis output variants
+    r"\b(?:your|these|those)\s+symptoms?\s+(?:suggest|indicate|point\s+to)\s+(?:that\s+)?you\s+have\b",
+    r"\byou\s+may\s+have\s+(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke|an?\s+infection)\b",
+    r"\byou\s+might\s+have\s+(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke|an?\s+infection)\b",
+    r"\bthis\s+sounds\s+like\s+(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke)\b",
+    r"\bthis\s+looks\s+like\s+(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke)\b",
 )
 
 
@@ -171,16 +194,23 @@ UNSAFE_PRESCRIPTION_OUTPUT_PATTERNS = (
     r"\bstop\s+taking\s+your\s+(?:medicine|medication)\b",
     r"\bstart\s+taking\s+your\s+(?:medicine|medication)\b",
     r"\bswitch\s+your\s+(?:medicine|medication)\b",
+
+    # Additional unsafe prescription output variants
+    r"\bi\s+recommend\s+(?:that\s+)?you\s+(?:take|use)\s+(?:this|the|a|an)\s+(?:medicine|medication|drug|antibiotic)\b",
 )
 
 
 UNSAFE_TREATMENT_OUTPUT_PATTERNS = (
     r"\byou\s+should\s+follow\s+(?:this|the)\s+treatment\b",
+    r"\byou\s+should\s+follow\s+(?:this|the)\s+treatment\s+plan\b",
     r"\byou\s+should\s+treat\s+(?:this|it)\s+with\b",
     r"\byou\s+need\s+to\s+treat\s+(?:this|it)\s+with\b",
     r"\bfor\s+your\s+symptoms,?\s+you\s+should\s+(?:use|take|apply|follow|start)\b",
     r"\bfor\s+your\s+condition,?\s+you\s+should\s+(?:use|take|apply|follow|start)\b",
     r"\bi\s+recommend\s+(?:this|the\s+following)\s+treatment\s+for\s+you\b",
+
+    # Additional unsafe personalized treatment outputs
+    r"\bi\s+recommend\s+(?:that\s+)?you\s+(?:follow|use|start)\s+(?:this|the)\s+(?:treatment|therapy|plan)\b",
 )
 
 
