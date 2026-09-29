@@ -401,3 +401,7 @@ def test_doctor_guidance_prompts_do_not_expose_internal_information():
     for phrase in protected_phrases:
         assert phrase in DOCTOR_SEARCH_GUIDANCE_PROMPT
         assert phrase in APPOINTMENT_GUIDANCE_PROMPT
+
+def test_doctor_search_prompt_prevents_unsupported_card_fields():
+    assert "Do not rename, invent, infer, calculate, derive, or add doctor profile" in DOCTOR_SEARCH_GUIDANCE_PROMPT
+    assert "must not introduce frontend-only fields" in DOCTOR_SEARCH_GUIDANCE_PROMPT
