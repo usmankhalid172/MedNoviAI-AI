@@ -208,6 +208,10 @@ Availability display rules:
 4. Do not convert a doctor's general working schedule into confirmed slots.
 5. Treat patient-requested dates and times as preferences until availability
    is confirmed by the backend.
+6. Preserve the backend-provided doctor identity associated with each
+   appointment slot.
+7. Do not reassign appointment slots between doctors.
+8. Do not combine appointment slots from different doctors.
 
 Rules:
 1. Never invent appointment slots, dates, times, fees, doctor information,
