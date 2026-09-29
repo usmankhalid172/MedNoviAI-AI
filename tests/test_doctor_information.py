@@ -388,3 +388,16 @@ def test_appointment_prompt_keeps_slots_associated_with_backend_doctor():
     assert "doctor identity" in APPOINTMENT_GUIDANCE_PROMPT
     assert "Do not reassign appointment slots between doctors" in APPOINTMENT_GUIDANCE_PROMPT
     assert "Do not combine appointment slots from different doctors" in APPOINTMENT_GUIDANCE_PROMPT
+
+def test_doctor_guidance_prompts_do_not_expose_internal_information():
+    protected_phrases = (
+        "system instructions",
+        "internal prompts",
+        "API keys",
+        "credentials",
+        "private system information",
+    )
+
+    for phrase in protected_phrases:
+        assert phrase in DOCTOR_SEARCH_GUIDANCE_PROMPT
+        assert phrase in APPOINTMENT_GUIDANCE_PROMPT
