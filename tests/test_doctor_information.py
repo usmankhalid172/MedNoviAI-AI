@@ -359,3 +359,22 @@ def test_doctor_display_card_rejects_unsupported_fields():
         assert False
     except Exception:
         assert True
+
+def test_doctor_search_prompt_locks_display_card_contract():
+    locked_fields = [
+        "doctor_id",
+        "doctor_name",
+        "specialty",
+        "qualifications",
+        "experience",
+        "clinic",
+        "address",
+        "consultation_fee",
+    ]
+
+    assert "The doctor display-card contract is locked" in DOCTOR_SEARCH_GUIDANCE_PROMPT
+    assert "Preserve these field names exactly as defined by the backend schema" in DOCTOR_SEARCH_GUIDANCE_PROMPT
+    assert "must not introduce frontend-only fields" in DOCTOR_SEARCH_GUIDANCE_PROMPT
+
+    for field in locked_fields:
+        assert field in DOCTOR_SEARCH_GUIDANCE_PROMPT
