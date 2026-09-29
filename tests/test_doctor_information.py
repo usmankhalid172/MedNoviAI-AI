@@ -378,3 +378,8 @@ def test_doctor_search_prompt_locks_display_card_contract():
 
     for field in locked_fields:
         assert field in DOCTOR_SEARCH_GUIDANCE_PROMPT
+
+def test_doctor_search_prompt_separates_profile_and_schedule_data():
+    assert "Keep doctor profile fields separate from schedule, availability" in DOCTOR_SEARCH_GUIDANCE_PROMPT
+    assert "Only display schedule or appointment availability when explicitly supplied" in DOCTOR_SEARCH_GUIDANCE_PROMPT
+    assert "Never present a patient's preferred date or time as a confirmed slot" in DOCTOR_SEARCH_GUIDANCE_PROMPT
