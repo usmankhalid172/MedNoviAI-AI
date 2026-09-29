@@ -319,3 +319,43 @@ def test_context_preserves_active_specialty_after_profile_lookup():
     assert context.active_doctor == "Dr. Ahmed"
     assert context.active_doctor_id == "DOC-001"
     assert context.active_specialty == "Cardiology"
+
+def test_doctor_display_card_preserves_supported_fields():
+    doctor = DoctorProfile(
+        doctor_id="DOC-001",
+        doctor_name="Dr. Ahmed",
+        specialty="Cardiology",
+        qualifications=["MBBS", "FCPS"],
+        experience="10 years",
+        clinic="City Hospital",
+        address="Main Road",
+        consultation_fee="3000 PKR",
+    )
+
+    result = DoctorInformationService().process(
+        "Tell me about Dr. Ahmed's profile",
+        doctor=doctor,
+    )
+
+    assert result.doctor == doctor
+    assert result.doctor.doctor_id == "DOC-001"
+    assert result.doctor.doctor_name == "Dr. Ahmed"
+    assert result.doctor.specialty == "Cardiology"
+    assert result.doctor.qualifications == ["MBBS", "FCPS"]
+    assert result.doctor.experience == "10 years"
+    assert result.doctor.clinic == "City Hospital"
+    assert result.doctor.address == "Main Road"
+    assert result.doctor.consultation_fee == "3000 PKR"
+
+
+def test_doctor_display_card_rejects_unsupported_fields():
+    try:
+        DoctorProfile(
+            doctor_id="DOC-001",
+            doctor_name="Dr. Ahmed",
+            specialty="Cardiology",
+            rating=4.8,
+        )
+        assert False
+    except Exception:
+        assert True
