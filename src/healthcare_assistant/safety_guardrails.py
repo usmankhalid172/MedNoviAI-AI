@@ -46,6 +46,17 @@ EMERGENCY_PATTERNS = (
     r"\bsevere\s+(?:or\s+sudden\s+)?confusion\b",
     r"\b(?:cannot|can't)\s+stay\s+awake\b",
     r"\b(?:collapse|collapsed)\b",
+
+    # Sept 21 final compliance emergency variants
+    r"\b(?:my\s+)?(?:lips?|face|skin)\s+(?:turned|have\s+turned|has\s+turned)\s+(?:blue|bluish|gray|grey)\b",
+    r"\b(?:there\s+is|there's)\s+blood\s+in\s+my\s+vomit\b",
+    r"\bcoughed\s+up\s+blood\b",
+    r"\bi\s+am\s+losing\s+consciousness\b",
+    r"\bi\s+can't\s+stay\s+conscious\b",
+    r"\bi\s+cannot\s+stay\s+conscious\b",
+    r"\bi\s+feel\s+like\s+i(?:['’]m|\s+am)\s+(?:going\s+to|about\s+to)\s+(?:pass\s+out|faint)\b",
+    r"\bi\s+am\s+(?:going\s+to|about\s+to)\s+(?:pass\s+out|faint)\b",
+    r"\bi\s+am\s+not\s+responding\b",
 )
 
 

@@ -564,3 +564,62 @@ def test_normal_request_does_not_trigger_safety_response():
         )
         is None
     )
+
+
+# ---------------------------------------------------------------------------
+# Sept 21 Final Compliance Tests
+# ---------------------------------------------------------------------------
+
+
+def test_final_compliance_requirements_are_explicit():
+    prompt = SYSTEM_PROMPT.lower()
+
+    assert "final compliance requirements" in prompt
+    assert "must never provide a definitive medical diagnosis" in prompt
+    assert "must never confirm that a user has a specific disease" in prompt
+    assert "must never prescribe medication for an individual user" in prompt
+    assert "must never provide personalized dosage instructions" in prompt
+    assert "must never provide individualized treatment instructions" in prompt
+    assert "immediate safety escalation must occur" in prompt
+    assert (
+        "emergency escalation must direct the user to local emergency services "
+        "or immediate professional medical care"
+        in prompt
+    )
+    assert (
+        "emergency escalation must occur before any diagnosis, prescription, "
+        "dosage, or personalized treatment discussion"
+        in prompt
+    )
+
+
+def test_sept21_final_emergency_variants_are_detected():
+    messages = [
+        "My lips turned blue.",
+        "There is blood in my vomit.",
+        "I coughed up blood.",
+        "I am losing consciousness.",
+        "I can't stay conscious.",
+        "I cannot stay conscious.",
+        "I feel like I'm going to pass out.",
+        "I am about to faint.",
+        "I am not responding.",
+    ]
+
+    for message in messages:
+        result = classify_request(message)
+
+        assert result["category"] == "emergency"
+        assert result["is_emergency"] is True
+        assert result["requires_immediate_redirect"] is True
+
+
+def test_final_emergency_response_has_required_escalation_language():
+    response = emergency_response().lower()
+
+    assert "medical emergency" in response
+    assert "immediate" in response
+    assert "local emergency services" in response
+    assert "professional medical care" in response
+    assert "qualified healthcare professional" in response
+    assert "do not delay" in response

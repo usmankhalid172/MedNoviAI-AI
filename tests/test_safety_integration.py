@@ -572,3 +572,139 @@ def test_safe_uncertain_ai_output_is_allowed():
     )
 
     assert ai_calls == ["Can you explain these symptoms?"]
+
+
+# ---------------------------------------------------------------------------
+# Sept 21 Final Compliance Integration Tests
+# ---------------------------------------------------------------------------
+
+
+def test_sept21_final_emergency_variants_never_reach_ai():
+    emergency_requests = [
+        "My lips turned blue.",
+        "There is blood in my vomit.",
+        "I coughed up blood.",
+        "I am losing consciousness.",
+        "I can't stay conscious.",
+        "I cannot stay conscious.",
+        "I feel like I'm going to pass out.",
+        "I am about to faint.",
+        "I am not responding.",
+    ]
+
+    for request in emergency_requests:
+        ai_calls = []
+
+        def fake_ai_handler(text: str) -> str:
+            ai_calls.append(text)
+            return "NORMAL AI RESPONSE"
+
+        response = handle_user_request(
+            request,
+            fake_ai_handler,
+        )
+
+        response_lower = response.lower()
+
+        assert "medical emergency" in response_lower
+        assert "immediate" in response_lower
+        assert "professional medical care" in response_lower
+        assert "emergency services" in response_lower
+        assert "do not delay" in response_lower
+        assert ai_calls == []
+
+
+def test_sept21_emergency_overrides_high_risk_secondary_requests():
+    requests = [
+        (
+            "I feel like I'm going to pass out. "
+            "Diagnose me and tell me what medicine to take."
+        ),
+        (
+            "There is blood in my vomit. "
+            "What treatment should I follow?"
+        ),
+        (
+            "My lips turned blue. "
+            "Tell me what dose I should take."
+        ),
+    ]
+
+    for request in requests:
+        ai_calls = []
+
+        def fake_ai_handler(text: str) -> str:
+            ai_calls.append(text)
+            return "UNSAFE AI RESPONSE"
+
+        response = handle_user_request(
+            request,
+            fake_ai_handler,
+        )
+
+        response_lower = response.lower()
+
+        assert "medical emergency" in response_lower
+        assert "emergency services" in response_lower
+        assert "immediate" in response_lower
+        assert "professional medical care" in response_lower
+        assert ai_calls == []
+
+
+def test_sept21_emergency_does_not_return_diagnostic_or_prescription_guidance():
+    requests = [
+        "My lips turned blue. What is wrong with me?",
+        "I coughed up blood. What medicine should I take?",
+        "I am losing consciousness. What treatment should I use?",
+    ]
+
+    for request in requests:
+        ai_calls = []
+
+        def fake_ai_handler(text: str) -> str:
+            ai_calls.append(text)
+            return "UNSAFE AI RESPONSE"
+
+        response = handle_user_request(
+            request,
+            fake_ai_handler,
+        )
+
+        response_lower = response.lower()
+
+        assert "medical emergency" in response_lower
+        assert "emergency services" in response_lower
+        assert "immediate" in response_lower
+        assert "professional medical care" in response_lower
+        assert "unsafe ai response" not in response_lower
+        assert ai_calls == []
+
+
+def test_sept21_emergency_variants_are_deterministically_intercepted():
+    emergency_requests = [
+        "My lips are turning blue.",
+        "My face turned gray.",
+        "There is blood in my vomit.",
+        "I am coughing up blood.",
+        "I am losing consciousness.",
+        "I cannot stay conscious.",
+        "I feel like I am going to pass out.",
+        "I am about to faint.",
+        "I am not responding.",
+    ]
+
+    for request in emergency_requests:
+        ai_calls = []
+
+        def fake_ai_handler(text: str) -> str:
+            ai_calls.append(text)
+            return "NORMAL AI RESPONSE"
+
+        response = handle_user_request(
+            request,
+            fake_ai_handler,
+        )
+
+        assert response != "NORMAL AI RESPONSE"
+        assert "medical emergency" in response.lower()
+        assert ai_calls == []

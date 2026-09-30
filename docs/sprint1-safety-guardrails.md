@@ -3,7 +3,7 @@
 **Assignee:** Zainab Raza  
 **Role:** AI Safety & Guardrails Engineer  
 **Branch:** `feature/sprint1-safety-guardrails-zainab`  
-**PR Title:** `Task-sept20-safety-guardrails-zainabraza`
+**PR Title:** `Task-sept21-safety-guardrails-zainabraza`
 
 ## 1. Objective
 
@@ -95,3 +95,43 @@ Emergency / Serious / Prescription / Treatment / Diagnosis / Unclear?
 Unsafe diagnosis/prescription/treatment?
     ├── YES → Safe Deterministic Refusal
     └── NO  → Return Informational Response
+
+    ## 7. Sept 21 Final Compliance Verification
+
+The Sept 21 task performs final compliance checks for healthcare safety
+prompts and high-risk emergency handling.
+
+### Compliance checks
+
+- Verified informational-only assistant boundaries.
+- Verified explicit non-diagnostic requirements.
+- Verified explicit non-prescriptive requirements.
+- Verified personalized dosage and treatment restrictions.
+- Verified emergency escalation requirements.
+- Verified emergency escalation priority over diagnosis, prescription,
+  dosage, and treatment requests.
+- Verified that high-risk emergency inputs are intercepted before normal AI
+  processing.
+- Verified that emergency responses direct users to local emergency services
+  or immediate professional medical care.
+
+### Additional emergency variants tested
+
+- Blue or discolored lips, face, or skin
+- Blood in vomit
+- Coughing up blood
+- Loss of consciousness
+- Inability to remain conscious
+- Feeling about to pass out or faint
+- Non-responsive state
+
+### Validation
+
+The final compliance tests verify that:
+
+1. High-risk emergency inputs are classified as `emergency`.
+2. `requires_immediate_redirect` is `True`.
+3. A deterministic emergency response is returned.
+4. The normal AI handler is not called.
+5. Emergency escalation takes priority over secondary diagnosis,
+   prescription, dosage, and treatment requests.
