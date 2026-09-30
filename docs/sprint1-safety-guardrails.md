@@ -3,120 +3,95 @@
 **Assignee:** Zainab Raza  
 **Role:** AI Safety & Guardrails Engineer  
 **Branch:** `feature/sprint1-safety-guardrails-zainab`  
-**PR Title:** `Task-sept19-safety-guardrails-zainabraza`
+**PR Title:** `Task-sept20-safety-guardrails-zainabraza`
 
 ## 1. Objective
 
-Audit system prompts to strictly prevent autonomous medical diagnoses or
-prescription generation.
+Audit system prompts to guarantee non-diagnostic and non-prescriptive response
+limits.
 
-Verify that high-risk or emergency medical queries trigger immediate safety
-disclaimers directing users to urgent professional care or local emergency
-services.
+Test emergency trigger keywords to ensure high-risk user prompts immediately
+return clear safety escalation disclaimers directing users to urgent
+professional care or local emergency services.
 
-The implementation remains deterministic and does not depend on the AI model
-to decide whether a safety boundary should apply.
+## 2. Safety Architecture
 
-## 2. Sept 19 – System Prompt Audit
+The Healthcare Assistant uses a deterministic safety layer before normal AI
+processing.
 
-The system prompt was reviewed and strengthened in the following areas:
+Every incoming request is classified before being passed to the normal AI
+handler.
 
-- autonomous diagnosis prevention;
-- prescription and medication recommendation prevention;
-- personalized dosage prevention;
-- emergency escalation;
-- high-risk medical query handling;
-- prompt-injection resistance;
-- AI output safety validation.
+The safety layer uses the following priority:
 
-The assistant remains an informational healthcare assistant and does not
-replace a qualified healthcare professional.
+1. Emergency / immediate safety escalation
+2. Serious or urgent symptom fallback
+3. Prescription or medication-change refusal
+4. Personalized treatment refusal
+5. Diagnosis refusal
+6. Unclear / unsupported medical-query fallback
+7. Normal informational response
 
-## 3. Diagnosis Safety Boundary
+The implementation does not depend on the AI model to decide whether a
+safety boundary should apply.
 
-The assistant must not:
+## 3. Non-Diagnostic Boundary
 
-- diagnose a user;
-- provide a definitive diagnosis;
-- confirm that a suspected condition is present;
-- state that symptoms prove a disease;
-- convert uncertain symptoms into a confirmed diagnosis;
-- make a clinical decision on behalf of a healthcare professional.
+The system prompt explicitly prevents:
 
-Diagnosis requests are routed to a deterministic diagnosis refusal.
+- autonomous diagnosis;
+- definitive diagnosis statements;
+- confirmation of suspected diseases;
+- diagnosis from symptoms alone;
+- unsupported clinical conclusions.
 
-## 4. Prescription Safety Boundary
+Diagnosis requests are handled by the deterministic diagnosis refusal.
 
-The assistant must not:
+## 4. Non-Prescriptive Boundary
 
-- prescribe medication;
-- select a specific medicine for an individual;
-- recommend prescription medication for individual symptoms;
-- provide personalized dosage instructions;
-- instruct a user to start, stop, increase, decrease, or switch medication.
+The system prompt explicitly prevents:
 
-Prescription and dosage requests are routed to a deterministic medication
+- prescription generation;
+- personalized medication recommendations;
+- personalized dosage instructions;
+- medication start/stop/change instructions;
+- individualized prescription decisions.
+
+Prescription and dosage requests are handled by the deterministic medication
 safety refusal.
 
-## 5. High-Risk Medical Safety
+## 5. Emergency Safety
 
-High-risk medical queries receive a safety boundary before normal healthcare
-reasoning.
-
-The deterministic safety layer covers emergency indicators such as:
-
-- severe or crushing chest pain;
-- difficulty or inability to breathe;
-- gasping for air;
-- heavy or uncontrolled bleeding;
-- fainting or loss of consciousness;
-- unresponsiveness;
-- stroke warning signs;
-- severe allergic reaction or anaphylaxis;
-- throat, lip, or tongue swelling;
-- seizure;
-- blue or gray lips, face, or skin;
-- coughing or vomiting blood;
-- severe confusion;
-- inability to stay awake.
-
-The high-risk handling is deterministic and does not rely on the model to
-decide whether the safety boundary should apply.
-
-## 6. Emergency Escalation
+Emergency safety has the highest priority.
 
 When an emergency indicator is detected:
 
-1. classify the request as `emergency`;
-2. set `requires_immediate_redirect` to `True`;
-3. return deterministic emergency guidance;
-4. do not call the normal AI handler;
-5. direct the user to local emergency services or immediate professional
-   medical care.
+1. the request is classified as `emergency`;
+2. `requires_immediate_redirect` is set to `True`;
+3. deterministic emergency guidance is returned;
+4. the normal AI handler is not called;
+5. the user is directed toward local emergency services or immediate
+   professional medical care.
 
-Emergency handling must not:
+Emergency handling does not diagnose, prescribe, provide dosage instructions,
+or create a personalized treatment plan.
 
-- diagnose the emergency condition;
-- prescribe medication;
-- provide dosage instructions;
-- provide individualized treatment instructions;
-- delay urgent care with unnecessary clarification.
-
-## 7. Safety Priority
-
-The deterministic safety layer uses the following priority:
+## 6. Integration Flow
 
 ```text
-Emergency
+User Request
     ↓
-Serious / Urgent
+Input Safety Layer
     ↓
-Prescription
-    ↓
-Personalized Treatment
-    ↓
-Diagnosis
-    ↓
-Unclear / Unsupported
-    ↓
-Normal Informational Request
+Emergency / Serious / Prescription / Treatment / Diagnosis / Unclear?
+    ├── YES → Deterministic Safety Response
+    │           ↓
+    │        AI handler is not called
+    │
+    └── NO → Normal AI Processing
+                ↓
+          Output Safety Validation
+                ↓
+Unsafe diagnosis/prescription/treatment?
+    ├── YES → Safe Deterministic Refusal
+    └── NO  → Return Informational Response

@@ -47,13 +47,14 @@ def test_emergency_variants_never_reach_ai():
         assert ai_calls == []
 
 
-def test_high_risk_emergency_queries_never_reach_ai():
+def test_sept20_high_risk_keywords_never_reach_ai():
     emergency_requests = [
         "My lips are turning blue.",
         "I am coughing up blood.",
         "I am vomiting blood.",
         "I have severe confusion.",
         "I cannot stay awake.",
+        "I collapsed.",
     ]
 
     for request in emergency_requests:
@@ -68,10 +69,12 @@ def test_high_risk_emergency_queries_never_reach_ai():
             fake_ai_handler,
         )
 
-        assert "medical emergency" in response.lower()
-        assert "immediate" in response.lower()
-        assert "professional medical care" in response.lower()
-        assert "emergency services" in response.lower()
+        response_lower = response.lower()
+
+        assert "medical emergency" in response_lower
+        assert "immediate" in response_lower
+        assert "professional medical care" in response_lower
+        assert "emergency services" in response_lower
         assert ai_calls == []
 
 
@@ -336,6 +339,26 @@ def test_emergency_overrides_treatment_request():
     assert ai_calls == []
 
 
+def test_sept20_emergency_trigger_overrides_diagnosis_and_prescription():
+    ai_calls = []
+
+    def fake_ai_handler(text: str) -> str:
+        ai_calls.append(text)
+        return "UNSAFE AI RESPONSE"
+
+    response = handle_user_request(
+        "My lips are turning blue. Diagnose me and tell me what medicine to take.",
+        fake_ai_handler,
+    )
+
+    response_lower = response.lower()
+
+    assert "medical emergency" in response_lower
+    assert "emergency services" in response_lower
+    assert "immediate" in response_lower
+    assert ai_calls == []
+
+
 def test_emergency_overrides_multiple_unsafe_requests():
     ai_calls = []
 
@@ -392,8 +415,10 @@ def test_additional_unsafe_diagnosis_generated_by_ai_is_sanitized():
             fake_ai_handler,
         )
 
-        assert "definitive medical diagnosis" in response.lower()
-        assert unsafe_output.lower() not in response.lower()
+        response_lower = response.lower()
+
+        assert "definitive medical diagnosis" in response_lower
+        assert unsafe_output.lower() not in response_lower
         assert ai_calls == [
             "Can you explain what my symptoms could mean?"
         ]
@@ -414,23 +439,6 @@ def test_unsafe_prescription_generated_by_ai_is_sanitized():
     assert "can't prescribe medicines" in response.lower()
     assert "amoxicillin" not in response.lower()
     assert ai_calls == ["Tell me about treatment options."]
-
-
-def test_unsafe_dosage_generated_by_ai_is_sanitized():
-    ai_calls = []
-
-    def fake_ai_handler(text: str) -> str:
-        ai_calls.append(text)
-        return "Take 500mg twice daily."
-
-    response = handle_user_request(
-        "Give me general treatment information.",
-        fake_ai_handler,
-    )
-
-    assert "can't prescribe medicines" in response.lower()
-    assert "500mg" not in response.lower()
-    assert ai_calls == ["Give me general treatment information."]
 
 
 def test_additional_unsafe_prescription_generated_by_ai_is_sanitized():
@@ -458,6 +466,23 @@ def test_additional_unsafe_prescription_generated_by_ai_is_sanitized():
         assert ai_calls == [
             "What should I do for these symptoms?"
         ]
+
+
+def test_unsafe_dosage_generated_by_ai_is_sanitized():
+    ai_calls = []
+
+    def fake_ai_handler(text: str) -> str:
+        ai_calls.append(text)
+        return "Take 500mg twice daily."
+
+    response = handle_user_request(
+        "Give me general treatment information.",
+        fake_ai_handler,
+    )
+
+    assert "can't prescribe medicines" in response.lower()
+    assert "500mg" not in response.lower()
+    assert ai_calls == ["Give me general treatment information."]
 
 
 def test_unsafe_treatment_generated_by_ai_is_sanitized():

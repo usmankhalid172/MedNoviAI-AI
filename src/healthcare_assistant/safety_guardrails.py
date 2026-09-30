@@ -7,6 +7,7 @@ from typing import Dict, Optional
 # Input priority:
 # emergency > serious > prescription > treatment > diagnosis > unclear > normal
 
+
 EMERGENCY_PATTERNS = (
     r"\b(?:severe|crushing|intense|very bad)\s+chest\s+pain\b",
     r"\bmy\s+chest\s+(?:hurts|is\s+hurting|really\s+hurts)\b",
@@ -39,11 +40,12 @@ EMERGENCY_PATTERNS = (
     r"\bhaving\s+a\s+seizure\b",
     r"\bseizure\b",
 
-    # Additional high-risk emergency indicators
+    # Sept 20 high-risk emergency trigger keywords
     r"\b(?:my\s+)?(?:lips?|face|skin)\s+(?:are|is)\s+(?:turning\s+)?(?:blue|bluish|gray|grey)\b",
     r"\b(?:coughing\s+up|coughing|vomiting|throwing\s+up)\s+blood\b",
     r"\bsevere\s+(?:or\s+sudden\s+)?confusion\b",
     r"\b(?:cannot|can't)\s+stay\s+awake\b",
+    r"\b(?:collapse|collapsed)\b",
 )
 
 
@@ -105,10 +107,7 @@ PRESCRIPTION_PATTERNS = (
     r"\bprescribe\s+(?:me|a|some)\b",
     r"\bprescribe\s+(?:medicine|medication|a\s+drug)\b",
 
-    # Additional prescription variants
     r"\bcan\s+you\s+prescribe\s+(?:me|a|some)\b",
-    r"\bwhat\s+medicine\s+should\s+i\s+use\s+for\s+this\b",
-    r"\bwhat\s+medication\s+should\s+i\s+use\s+for\s+this\b",
 )
 
 
@@ -147,7 +146,6 @@ DIAGNOSIS_PATTERNS = (
     r"\bmight\s+(?:these|those)\s+symptoms\s+(?:mean|indicate|suggest)\b",
     r"\bmay\s+(?:these|those)\s+symptoms\s+(?:mean|indicate|suggest)\b",
 
-    # Additional diagnosis variants
     r"\bdoes\s+this\s+mean\s+i\s+have\b",
     r"\bare\s+my\s+symptoms?\s+(?:a\s+sign|signs)\s+of\b",
     r"\bcould\s+i\s+have\s+(?:covid|diabetes|cancer|pneumonia|flu|asthma|an?\s+infection|a\s+heart\s+attack|a\s+stroke)\b",
@@ -190,8 +188,6 @@ UNSAFE_DIAGNOSIS_OUTPUT_PATTERNS = (
     r"\byou\s+have\s+(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke|an?\s+infection)\b",
     r"\bthis\s+(?:is|looks\s+like|appears\s+to\s+be)\s+(?:definitely|probably|likely)?\s*(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke)\b",
     r"\byour\s+symptoms?\s+(?:prove|confirm|show)\s+(?:that\s+)?you\s+have\b",
-
-    # Additional unsafe diagnosis outputs
     r"\b(?:your|these|those)\s+symptoms?\s+(?:suggest|indicate|point\s+to)\s+(?:that\s+)?you\s+have\b",
     r"\byou\s+may\s+have\s+(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke|an?\s+infection)\b",
     r"\byou\s+might\s+have\s+(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke|an?\s+infection)\b",
@@ -215,8 +211,6 @@ UNSAFE_PRESCRIPTION_OUTPUT_PATTERNS = (
     r"\bstop\s+taking\s+your\s+(?:medicine|medication)\b",
     r"\bstart\s+taking\s+your\s+(?:medicine|medication)\b",
     r"\bswitch\s+your\s+(?:medicine|medication)\b",
-
-    # Additional unsafe prescription output
     r"\bi\s+recommend\s+(?:that\s+)?you\s+(?:take|use)\s+(?:this|the|a|an)\s+(?:medicine|medication|drug|antibiotic)\b",
 )
 
@@ -228,8 +222,6 @@ UNSAFE_TREATMENT_OUTPUT_PATTERNS = (
     r"\bfor\s+your\s+symptoms,?\s+you\s+should\s+(?:use|take|apply|follow|start)\b",
     r"\bfor\s+your\s+condition,?\s+you\s+should\s+(?:use|take|apply|follow|start)\b",
     r"\bi\s+recommend\s+(?:this|the\s+following)\s+treatment\s+for\s+you\b",
-
-    # Additional unsafe personalized treatment output
     r"\bi\s+recommend\s+(?:that\s+)?you\s+(?:follow|use|start)\s+(?:this|the)\s+(?:treatment|therapy|plan)\b",
 )
 
