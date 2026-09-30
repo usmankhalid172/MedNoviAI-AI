@@ -2,8 +2,8 @@
 
 **Assignee:** Zainab Raza  
 **Role:** AI Safety & Guardrails Engineer  
-**Branch:** `feature/sprint1-safety-guardrails-zainab`  
-**PR Title:** `Task-sept21-safety-guardrails-zainabraza`
+**Branch:** `feature/sprint1-safety-guardrails-day22-27-zainab`  
+**PR Title:** `Task-sept27-safety-guardrails-zainabraza`
 
 ## 1. Objective
 
@@ -135,3 +135,16 @@ The final compliance tests verify that:
 4. The normal AI handler is not called.
 5. Emergency escalation takes priority over secondary diagnosis,
    prescription, dosage, and treatment requests.
+
+   ## 8. Day 22–27 Final Compliance Phase
+
+The Day 22–27 phase completes the final safety validation cycle.
+
+- Day 22: medical disclaimers attached to safe AI responses.
+- Day 23: emergency triggers verified for immediate escalation.
+- Day 24: diagnosis and direct medicine requests deterministically blocked.
+- Day 25: prompt-injection and security regression coverage strengthened.
+- Day 26: final AI Safety & Compliance document created.
+- Day 27: live safety scenarios prepared for final review.
+
+See `docs/ai-safety-compliance.md` for the complete compliance record.

@@ -7,6 +7,11 @@ from typing import Dict, Optional
 # Input priority:
 # emergency > serious > prescription > treatment > diagnosis > unclear > normal
 
+MEDICAL_DISCLAIMER = (
+    "Medical information provided here is for general informational purposes "
+    "only and does not replace advice from a qualified healthcare professional."
+)
+
 
 EMERGENCY_PATTERNS = (
     r"\b(?:severe|crushing|intense|very bad)\s+chest\s+pain\b",
@@ -119,6 +124,12 @@ PRESCRIPTION_PATTERNS = (
     r"\bprescribe\s+(?:medicine|medication|a\s+drug)\b",
 
     r"\bcan\s+you\s+prescribe\s+(?:me|a|some)\b",
+
+    # Day 24 direct medicine-request coverage
+    r"\bgive\s+me\s+(?:some\s+|a\s+|an\s+)?(?:medicine|medication|drug)\b",
+    r"\brecommend\s+(?:me\s+)?(?:some\s+|a\s+|an\s+)?(?:medicine|medication|drug)\b",
+    r"\bsuggest\s+(?:some\s+|a\s+|an\s+)?(?:medicine|medication|drug)\s+for\s+me\b",
+    r"\bgive\s+me\s+(?:an?\s+)?(?:antibiotic|prescription)\b",
 )
 
 
@@ -515,7 +526,13 @@ def validate_ai_response(text: str) -> Dict[str, object]:
 
 
 def sanitize_ai_response(text: str) -> str:
-    """Replace unsafe AI output with a deterministic safe response."""
+    """
+    Replace unsafe AI output with deterministic safe guidance.
+
+    Safe informational AI responses receive a general medical disclaimer.
+    Unsafe diagnosis, prescription, and treatment outputs are replaced with
+    deterministic safety responses.
+    """
     category = classify_ai_output(text)
 
     if category == "diagnosis":
@@ -527,7 +544,15 @@ def sanitize_ai_response(text: str) -> str:
     if category == "treatment":
         return treatment_refusal_response()
 
-    return text
+    normalized = _normalize(text)
+
+    if (
+        "does not replace advice from a qualified healthcare professional"
+        in normalized
+    ):
+        return text
+
+    return f"{text.rstrip()}\n\n{MEDICAL_DISCLAIMER}"
 
 
 def get_safety_response(text: str) -> Optional[str]:
