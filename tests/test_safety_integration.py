@@ -47,6 +47,56 @@ def test_emergency_variants_never_reach_ai():
         assert ai_calls == []
 
 
+def test_high_risk_emergency_queries_never_reach_ai():
+    emergency_requests = [
+        "My lips are turning blue.",
+        "I am coughing up blood.",
+        "I am vomiting blood.",
+        "I have severe confusion.",
+        "I cannot stay awake.",
+    ]
+
+    for request in emergency_requests:
+        ai_calls = []
+
+        def fake_ai_handler(text: str) -> str:
+            ai_calls.append(text)
+            return "NORMAL AI RESPONSE"
+
+        response = handle_user_request(
+            request,
+            fake_ai_handler,
+        )
+
+        assert "medical emergency" in response.lower()
+        assert "immediate" in response.lower()
+        assert "professional medical care" in response.lower()
+        assert "emergency services" in response.lower()
+        assert ai_calls == []
+
+
+def test_emergency_response_does_not_delay_care():
+    ai_calls = []
+
+    def fake_ai_handler(text: str) -> str:
+        ai_calls.append(text)
+        return "NORMAL AI RESPONSE"
+
+    response = handle_user_request(
+        "I can't breathe and I am gasping for air.",
+        fake_ai_handler,
+    )
+
+    response_lower = response.lower()
+
+    assert "medical emergency" in response_lower
+    assert "immediate" in response_lower
+    assert "emergency services" in response_lower
+    assert "professional medical care" in response_lower
+    assert "do not delay" in response_lower
+    assert ai_calls == []
+
+
 def test_serious_urgent_symptoms_are_blocked_before_ai():
     requests = [
         "My symptoms are getting worse quickly.",
@@ -94,6 +144,9 @@ def test_diagnosis_variants_are_blocked_before_ai():
         "Can you confirm that I have pneumonia?",
         "Do these symptoms mean I have diabetes?",
         "Is this definitely an infection?",
+        "Does this mean I have diabetes?",
+        "Are my symptoms a sign of pneumonia?",
+        "Could I have asthma?",
     ]
 
     for request in requests:
@@ -135,6 +188,8 @@ def test_prescription_variants_are_blocked_before_ai():
         "Should I start taking this medication?",
         "Can I increase my dose?",
         "Should I stop taking my medication?",
+        "Can you prescribe me something?",
+        "What medicine should I use for this?",
     ]
 
     for request in requests:
@@ -316,6 +371,34 @@ def test_unsafe_diagnosis_generated_by_ai_is_sanitized():
     assert ai_calls == ["Can you explain my symptoms?"]
 
 
+def test_additional_unsafe_diagnosis_generated_by_ai_is_sanitized():
+    unsafe_outputs = [
+        "Your symptoms suggest that you have pneumonia.",
+        "You may have asthma.",
+        "You might have an infection.",
+        "This sounds like pneumonia.",
+        "This looks like diabetes.",
+    ]
+
+    for unsafe_output in unsafe_outputs:
+        ai_calls = []
+
+        def fake_ai_handler(text: str, output=unsafe_output) -> str:
+            ai_calls.append(text)
+            return output
+
+        response = handle_user_request(
+            "Can you explain what my symptoms could mean?",
+            fake_ai_handler,
+        )
+
+        assert "definitive medical diagnosis" in response.lower()
+        assert unsafe_output.lower() not in response.lower()
+        assert ai_calls == [
+            "Can you explain what my symptoms could mean?"
+        ]
+
+
 def test_unsafe_prescription_generated_by_ai_is_sanitized():
     ai_calls = []
 
@@ -350,6 +433,33 @@ def test_unsafe_dosage_generated_by_ai_is_sanitized():
     assert ai_calls == ["Give me general treatment information."]
 
 
+def test_additional_unsafe_prescription_generated_by_ai_is_sanitized():
+    unsafe_outputs = [
+        "You should take this medicine.",
+        "You need to take this medication.",
+        "Start taking this drug.",
+        "I recommend that you take this medicine.",
+    ]
+
+    for unsafe_output in unsafe_outputs:
+        ai_calls = []
+
+        def fake_ai_handler(text: str, output=unsafe_output) -> str:
+            ai_calls.append(text)
+            return output
+
+        response = handle_user_request(
+            "What should I do for these symptoms?",
+            fake_ai_handler,
+        )
+
+        assert "can't prescribe medicines" in response.lower()
+        assert unsafe_output.lower() not in response.lower()
+        assert ai_calls == [
+            "What should I do for these symptoms?"
+        ]
+
+
 def test_unsafe_treatment_generated_by_ai_is_sanitized():
     ai_calls = []
 
@@ -365,6 +475,32 @@ def test_unsafe_treatment_generated_by_ai_is_sanitized():
     assert "personalized treatment plan" in response.lower()
     assert "follow this treatment" not in response.lower()
     assert ai_calls == ["Explain what treatment options exist."]
+
+
+def test_additional_unsafe_treatment_generated_by_ai_is_sanitized():
+    unsafe_outputs = [
+        "I recommend that you follow this treatment plan.",
+        "I recommend that you use this treatment.",
+        "I recommend that you start the treatment.",
+    ]
+
+    for unsafe_output in unsafe_outputs:
+        ai_calls = []
+
+        def fake_ai_handler(text: str, output=unsafe_output) -> str:
+            ai_calls.append(text)
+            return output
+
+        response = handle_user_request(
+            "What should I personally do about these symptoms?",
+            fake_ai_handler,
+        )
+
+        assert "personalized treatment plan" in response.lower()
+        assert unsafe_output.lower() not in response.lower()
+        assert ai_calls == [
+            "What should I personally do about these symptoms?"
+        ]
 
 
 def test_safe_ai_output_is_returned():
@@ -386,6 +522,7 @@ def test_safe_ai_output_is_returned():
         "Flu commonly causes fever, cough, fatigue, "
         "and body aches."
     )
+
     assert ai_calls == ["What are common flu symptoms?"]
 
 
@@ -408,4 +545,5 @@ def test_safe_uncertain_ai_output_is_allowed():
         "These symptoms can have several possible causes. "
         "A healthcare professional can evaluate the cause."
     )
+
     assert ai_calls == ["Can you explain these symptoms?"]

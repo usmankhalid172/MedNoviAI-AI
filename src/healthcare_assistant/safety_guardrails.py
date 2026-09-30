@@ -11,28 +11,41 @@ EMERGENCY_PATTERNS = (
     r"\b(?:severe|crushing|intense|very bad)\s+chest\s+pain\b",
     r"\bmy\s+chest\s+(?:hurts|is\s+hurting|really\s+hurts)\b",
     r"\bchest\s+pain\b",
+
     r"\b(?:can't|cannot|can not|unable to)\s+(?:breathe|breathing)\b",
     r"\b(?:having trouble|struggling|difficulty|hard|hard time)\s+(?:breathing|to breathe)\b",
     r"\bshortness\s+of\s+breath\b",
     r"\bcan['’]?t\s+catch\s+my\s+breath\b",
     r"\bgasping\s+for\s+air\b",
+
     r"\b(?:heavy|severe|uncontrolled|a lot of|won['’]t\s+stop)\s+(?:bleeding|blood)\b",
+
     r"\b(?:passed\s+out|passing\s+out|fainted|fainting)\b",
     r"\bloss\s+of\s+consciousness\b",
     r"\bunconscious\b",
     r"\bunresponsive\b",
+
     r"\bsigns?\s+of\s+(?:a\s+)?stroke\b",
     r"\bstroke\s+symptoms?\b",
     r"\bsudden\s+(?:weakness|numbness)\s+(?:on|in)\s+(?:one|the)\s+(?:side|arm|leg)\b",
     r"\b(?:face\s+drooping|slurred\s+speech|speech\s+is\s+(?:suddenly\s+)?slurred|sudden\s+trouble\s+speaking|sudden\s+speech\s+difficulty)\b",
+
     r"\bsevere\s+allergic\s+reaction\b",
     r"\banaphylaxis\b",
     r"\b(?:my\s+)?throat\s+(?:is\s+)?swelling\b",
     r"\bswelling\s+(?:of|in)\s+(?:my\s+)?throat\b",
     r"\b(?:lips?|tongue)\s+(?:are|is)\s+swelling\b",
+
     r"\bhaving\s+a\s+seizure\b",
     r"\bseizure\b",
+
+    # Additional high-risk emergency indicators
+    r"\b(?:my\s+)?(?:lips?|face|skin)\s+(?:are|is)\s+(?:turning\s+)?(?:blue|bluish|gray|grey)\b",
+    r"\b(?:coughing\s+up|coughing|vomiting|throwing\s+up)\s+blood\b",
+    r"\bsevere\s+(?:or\s+sudden\s+)?confusion\b",
+    r"\b(?:cannot|can't)\s+stay\s+awake\b",
 )
+
 
 SERIOUS_SYMPTOM_PATTERNS = (
     r"\bmy\s+symptoms?\s+(?:are\s+)?getting\s+worse\b",
@@ -40,13 +53,16 @@ SERIOUS_SYMPTOM_PATTERNS = (
     r"\bsymptoms?\s+(?:are\s+)?worsening\b",
     r"\bgetting\s+worse\s+(?:quickly|rapidly)\b",
     r"\brapidly\s+worsening\s+symptoms?\b",
+
     r"\bpersistent\s+(?:and\s+)?(?:concerning\s+)?symptoms?\b",
     r"\bpersistent\s+severe\s+fever\b",
     r"\bsevere\s+fever\s+(?:for|lasting)\b",
     r"\bpersistent\s+(?:or\s+)?repeated\s+vomiting\b",
     r"\bsevere\s+weakness\b",
+
     r"\bsevere\s+pain\s+(?:that\s+)?(?:isn't|is\s+not)\s+improving\b",
     r"\bpain\s+(?:that\s+)?(?:isn't|is\s+not)\s+improving\b",
+
     r"\b(?:urgent|concerning)\s+symptoms?\b",
     r"\bhigh\s+fever\s+(?:that\s+)?(?:isn't|is\s+not)\s+improving\b",
     r"\brepeated\s+vomiting\b",
@@ -58,28 +74,41 @@ PRESCRIPTION_PATTERNS = (
     r"\bwhich\s+(?:medicine|medication|drug)\s+(?:should|can|could)\s+i\s+(?:take|use)\b",
     r"\bwhat\s+antibiotic\s+(?:should|can|could)\s+i\s+take\b",
     r"\bwhich\s+antibiotic\s+(?:should|can|could)\s+i\s+take\b",
+
     r"\bwhich\s+(?:medicine|medication|drug|antibiotic)\s+would\s+be\s+(?:appropriate|best|suitable)\s+for\s+me\b",
     r"\bwhat\s+(?:medicine|medication|drug|antibiotic)\s+would\s+be\s+(?:appropriate|best|suitable)\s+for\s+me\b",
     r"\bwhich\s+(?:medicine|medication|drug|antibiotic)\s+is\s+(?:best|appropriate|suitable)\s+for\s+me\b",
     r"\bwhat\s+(?:medicine|medication|drug|antibiotic)\s+is\s+(?:best|appropriate|suitable)\s+for\s+me\b",
+
     r"\bwhat\s+should\s+i\s+take\s+for\b",
     r"\bwhat\s+can\s+i\s+take\s+for\b",
     r"\bwhat\s+medicine\s+can\s+i\s+take\s+for\b",
+
     r"\bwhat\s+(?:dose|dosage)\s+should\s+i\s+(?:take|use)\b",
     r"\bhow\s+much\s+(?:medicine|medication|of\s+this)\s+should\s+i\s+take\b",
     r"\bhow\s+many\s+(?:mg|milligrams|tablets|pills)\s+should\s+i\s+take\b",
     r"\bhow\s+often\s+should\s+i\s+take\s+(?:this|my|the)\s+(?:medicine|medication|drug|antibiotic)\b",
+
     r"\bshould\s+i\s+(?:increase|decrease|double)\s+my\s+(?:dose|dosage)\b",
     r"\bcan\s+i\s+(?:increase|decrease|double)\s+my\s+(?:dose|dosage)\b",
+
     r"\bshould\s+i\s+start\s+taking\s+(?:this|my|a|an)\s+(?:medicine|medication|drug|antibiotic)\b",
     r"\bcan\s+i\s+start\s+taking\s+(?:this|my|a|an)\s+(?:medicine|medication|drug|antibiotic)\b",
+
     r"\bshould\s+i\s+stop\s+(?:taking\s+)?my\s+(?:medicine|medication|drug)\b",
     r"\bcan\s+i\s+stop\s+(?:taking\s+)?my\s+(?:medicine|medication|drug)\b",
+
     r"\bshould\s+i\s+(?:change|switch)\s+my\s+(?:medicine|medication|drug)\b",
     r"\bcan\s+i\s+(?:change|switch)\s+my\s+(?:medicine|medication|drug)\b",
+
     r"\bshould\s+i\s+take\s+(?:antibiotics|an\s+antibiotic)\b",
     r"\bprescribe\s+(?:me|a|some)\b",
     r"\bprescribe\s+(?:medicine|medication|a\s+drug)\b",
+
+    # Additional prescription variants
+    r"\bcan\s+you\s+prescribe\s+(?:me|a|some)\b",
+    r"\bwhat\s+medicine\s+should\s+i\s+use\s+for\s+this\b",
+    r"\bwhat\s+medication\s+should\s+i\s+use\s+for\s+this\b",
 )
 
 
@@ -89,10 +118,13 @@ PERSONALIZED_TREATMENT_PATTERNS = (
     r"\bwhat\s+treatment\s+is\s+(?:best|appropriate|suitable)\s+for\s+me\b",
     r"\bwhat\s+treatment\s+do\s+i\s+need\b",
     r"\bwhat\s+treatment\s+do\s+i\s+need\s+for\b",
+
     r"\bhow\s+should\s+i\s+treat\s+(?:this|it|my\s+symptoms?|my\s+condition)\b",
     r"\bhow\s+can\s+i\s+treat\s+(?:this|it|my\s+symptoms?|my\s+condition)\b",
+
     r"\bwhat\s+should\s+i\s+do\s+to\s+treat\s+(?:this|it|my\s+symptoms?|my\s+condition)\b",
     r"\bwhat\s+should\s+i\s+do\s+to\s+cure\s+(?:this|it|my\s+symptoms?|my\s+condition)\b",
+
     r"\btell\s+me\s+how\s+to\s+treat\s+(?:this|it|my\s+symptoms?|my\s+condition)\b",
 )
 
@@ -114,6 +146,11 @@ DIAGNOSIS_PATTERNS = (
     r"\bcould\s+(?:these|those)\s+symptoms\s+(?:mean|indicate|suggest)\b",
     r"\bmight\s+(?:these|those)\s+symptoms\s+(?:mean|indicate|suggest)\b",
     r"\bmay\s+(?:these|those)\s+symptoms\s+(?:mean|indicate|suggest)\b",
+
+    # Additional diagnosis variants
+    r"\bdoes\s+this\s+mean\s+i\s+have\b",
+    r"\bare\s+my\s+symptoms?\s+(?:a\s+sign|signs)\s+of\b",
+    r"\bcould\s+i\s+have\s+(?:covid|diabetes|cancer|pneumonia|flu|asthma|an?\s+infection|a\s+heart\s+attack|a\s+stroke)\b",
 
     r"\bdo\s+i\s+have\s+(?:covid|diabetes|cancer|pneumonia|flu|asthma)\b",
     r"\bdo\s+i\s+definitely\s+have\b",
@@ -153,6 +190,13 @@ UNSAFE_DIAGNOSIS_OUTPUT_PATTERNS = (
     r"\byou\s+have\s+(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke|an?\s+infection)\b",
     r"\bthis\s+(?:is|looks\s+like|appears\s+to\s+be)\s+(?:definitely|probably|likely)?\s*(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke)\b",
     r"\byour\s+symptoms?\s+(?:prove|confirm|show)\s+(?:that\s+)?you\s+have\b",
+
+    # Additional unsafe diagnosis outputs
+    r"\b(?:your|these|those)\s+symptoms?\s+(?:suggest|indicate|point\s+to)\s+(?:that\s+)?you\s+have\b",
+    r"\byou\s+may\s+have\s+(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke|an?\s+infection)\b",
+    r"\byou\s+might\s+have\s+(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke|an?\s+infection)\b",
+    r"\bthis\s+sounds\s+like\s+(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke)\b",
+    r"\bthis\s+looks\s+like\s+(?:pneumonia|diabetes|cancer|covid|flu|asthma|a\s+heart\s+attack|a\s+stroke)\b",
 )
 
 
@@ -171,6 +215,9 @@ UNSAFE_PRESCRIPTION_OUTPUT_PATTERNS = (
     r"\bstop\s+taking\s+your\s+(?:medicine|medication)\b",
     r"\bstart\s+taking\s+your\s+(?:medicine|medication)\b",
     r"\bswitch\s+your\s+(?:medicine|medication)\b",
+
+    # Additional unsafe prescription output
+    r"\bi\s+recommend\s+(?:that\s+)?you\s+(?:take|use)\s+(?:this|the|a|an)\s+(?:medicine|medication|drug|antibiotic)\b",
 )
 
 
@@ -181,6 +228,9 @@ UNSAFE_TREATMENT_OUTPUT_PATTERNS = (
     r"\bfor\s+your\s+symptoms,?\s+you\s+should\s+(?:use|take|apply|follow|start)\b",
     r"\bfor\s+your\s+condition,?\s+you\s+should\s+(?:use|take|apply|follow|start)\b",
     r"\bi\s+recommend\s+(?:this|the\s+following)\s+treatment\s+for\s+you\b",
+
+    # Additional unsafe personalized treatment output
+    r"\bi\s+recommend\s+(?:that\s+)?you\s+(?:follow|use|start)\s+(?:this|the)\s+(?:treatment|therapy|plan)\b",
 )
 
 

@@ -3,165 +3,108 @@
 **Assignee:** Zainab Raza  
 **Role:** AI Safety & Guardrails Engineer  
 **Branch:** `feature/sprint1-safety-guardrails-zainab`  
-**PR Title:** `Task-sept15-safety-guardrails-zainabraza`
+**PR Title:** `Task-sept19-safety-guardrails-zainabraza`
 
 ## 1. Objective
 
-Review unsafe and unsupported medical questions so the Healthcare Assistant
-strictly avoids autonomous diagnosis, prescription, dosage advice, and
-personalized treatment decisions.
+Audit system prompts to strictly prevent autonomous medical diagnoses or
+prescription generation.
 
-Verify that immediate emergency escalation triggers correctly redirect users
-to local emergency services or qualified healthcare professionals before
-normal AI processing.
+Verify that high-risk or emergency medical queries trigger immediate safety
+disclaimers directing users to urgent professional care or local emergency
+services.
 
-## 2. Sept 15 Safety Review
-
-The review strengthens the existing deterministic safety layer in four areas:
-
-- expanded natural-language emergency detection;
-- stronger diagnosis and prescription request coverage;
-- explicit detection of personalized treatment requests;
-- regression coverage proving safety responses bypass normal AI handling.
-
-The implementation remains deterministic and does not depend on the model
+The implementation remains deterministic and does not depend on the AI model
 to decide whether a safety boundary should apply.
 
-## 3. Input Safety Policy
+## 2. Sept 19 – System Prompt Audit
 
-Every incoming healthcare request passes through the safety layer before
-normal AI processing.
+The system prompt was reviewed and strengthened in the following areas:
 
-Priority order:
+- autonomous diagnosis prevention;
+- prescription and medication recommendation prevention;
+- personalized dosage prevention;
+- emergency escalation;
+- high-risk medical query handling;
+- prompt-injection resistance;
+- AI output safety validation.
 
-1. Emergency / immediate safety escalation
-2. Serious or urgent symptom fallback
-3. Prescription or medication-change refusal
-4. Personalized treatment refusal
-5. Diagnosis refusal
-6. Unclear medical-query fallback
-7. Normal informational response
+The assistant remains an informational healthcare assistant and does not
+replace a qualified healthcare professional.
 
-An emergency always overrides a diagnosis, prescription, dosage, or treatment
-request contained in the same user message.
-
-## 4. Unsupported Medical Requests
-
-### Diagnosis
+## 3. Diagnosis Safety Boundary
 
 The assistant must not:
 
 - diagnose a user;
-- confirm a suspected condition;
-- identify a disease as the user's diagnosis from symptoms alone;
-- convert uncertainty into a definitive diagnosis.
+- provide a definitive diagnosis;
+- confirm that a suspected condition is present;
+- state that symptoms prove a disease;
+- convert uncertain symptoms into a confirmed diagnosis;
+- make a clinical decision on behalf of a healthcare professional.
 
-Detected diagnosis requests are routed to a deterministic diagnosis refusal.
+Diagnosis requests are routed to a deterministic diagnosis refusal.
 
-### Prescription and Dosage
+## 4. Prescription Safety Boundary
 
 The assistant must not:
 
-- choose a medication for a specific user;
-- prescribe antibiotics or other medicines;
+- prescribe medication;
+- select a specific medicine for an individual;
+- recommend prescription medication for individual symptoms;
 - provide personalized dosage instructions;
 - instruct a user to start, stop, increase, decrease, or switch medication.
 
-Detected requests are routed to a deterministic medication-safety refusal.
+Prescription and dosage requests are routed to a deterministic medication
+safety refusal.
 
-### Personalized Treatment
+## 5. High-Risk Medical Safety
 
-The assistant must not choose a treatment plan for a specific user.
+High-risk medical queries receive a safety boundary before normal healthcare
+reasoning.
 
-Examples that must be blocked include:
-
-- "What treatment should I follow?"
-- "How should I treat my symptoms?"
-- "What treatment is best for me?"
-- "What should I do to cure this?"
-
-General educational questions such as "What treatment options are commonly used
-for asthma?" remain normal informational requests when they are not
-personalized.
-
-## 5. Emergency Escalation
-
-Potential emergency indicators include:
+The deterministic safety layer covers emergency indicators such as:
 
 - severe or crushing chest pain;
-- inability or difficulty breathing;
+- difficulty or inability to breathe;
 - gasping for air;
 - heavy or uncontrolled bleeding;
-- fainting, loss of consciousness, or unresponsiveness;
-- stroke warning signs such as sudden one-sided weakness, facial drooping,
-  or sudden speech difficulty;
+- fainting or loss of consciousness;
+- unresponsiveness;
+- stroke warning signs;
 - severe allergic reaction or anaphylaxis;
 - throat, lip, or tongue swelling;
-- seizure.
+- seizure;
+- blue or gray lips, face, or skin;
+- coughing or vomiting blood;
+- severe confusion;
+- inability to stay awake.
 
-Emergency response behavior:
+The high-risk handling is deterministic and does not rely on the model to
+decide whether the safety boundary should apply.
+
+## 6. Emergency Escalation
+
+When an emergency indicator is detected:
 
 1. classify the request as `emergency`;
 2. set `requires_immediate_redirect` to `True`;
 3. return deterministic emergency guidance;
 4. do not call the normal AI handler;
-5. direct the user to local emergency services or immediate care from a
-   qualified healthcare professional.
+5. direct the user to local emergency services or immediate professional
+   medical care.
 
-The safety layer does not diagnose the emergency condition or provide
-medication or dosage instructions.
+Emergency handling must not:
 
-## 6. Integration Flow
+- diagnose the emergency condition;
+- prescribe medication;
+- provide dosage instructions;
+- provide individualized treatment instructions;
+- delay urgent care with unnecessary clarification.
 
-```text
-User Request
-    ↓
-Input Safety Layer
-    ↓
-Emergency / Serious / Prescription / Treatment / Diagnosis / Unclear?
-    ├── YES → Deterministic safety response
-    └── NO
-         ↓
-      Normal AI Processing
-         ↓
-      Output Safety Validation
-         ↓
-Unsafe diagnosis/prescription/treatment?
-    ├── YES → Safe deterministic refusal
-    └── NO  → Return informational response
+## 7. Safety Priority
 
-### Sept 16 – Safety Guardrail Regression & Escalation Review
-
-### Objective
-
-Test and refine the Healthcare Assistant safety layer against:
-
-- diagnostic requests;
-- prescription and dosage recommendations;
-- personalized treatment requests;
-- unsupported or unclear medical queries;
-- serious and urgent health scenarios;
-- emergency health scenarios.
-
-The goal is to verify that unsafe requests are intercepted before normal AI
-processing and that emergency or urgent situations receive appropriate
-professional-care escalation.
-
-### Safety Categories
-
-The current deterministic safety categories are:
-
-1. Emergency
-2. Serious / urgent symptoms
-3. Prescription / medication request
-4. Personalized treatment request
-5. Diagnosis request
-6. Unclear / unsupported medical query
-7. Normal informational request
-
-### Priority
-
-The safety layer uses the following priority:
+The deterministic safety layer uses the following priority:
 
 ```text
 Emergency
