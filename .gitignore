@@ -67,3 +67,4 @@ node_modules/
 pyproject.toml
 uv.lock
 .python-version
+.vs/

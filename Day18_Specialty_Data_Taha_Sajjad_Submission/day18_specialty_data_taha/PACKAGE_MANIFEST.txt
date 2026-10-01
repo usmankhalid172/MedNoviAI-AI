@@ -1,0 +1,15 @@
+# Package Manifest
+
+Generated: 2026-09-28
+
+CHANGELOG_DAY18.md | SHA-256 | f2b4143893648890e93b5238b6c4ffd3911e16d7fb796e6dbb845404dbd330eb
+Day18_Specialty_Data_Taha_Completion_Report.pdf | SHA-256 | a74ae1b072ae2d8085304cad7ef97bca34212acddc4a61837ebe20326428deda
+README_DAY18_SPECIALTY_DATA_TAHA.md | SHA-256 | ea4424cf286e1867dffdfc6c00f29f0042b8b206a159fa7812c09c6c9b153300
+data/symptom_to_specialty.json | SHA-256 | 1630fa13a645d3460c71a4405a42aa73260d74018df851ef323a7226236c7bd2
+data/symptom_to_specialty.schema.json | SHA-256 | c61b6ee4f08d1d3fd3a85f71971458773fc4f4c15a34e5db1f8cc99523f4d1e2
+docs/PR_DESCRIPTION.md | SHA-256 | 7ed82d613c3c748a2b8192fee6609772488041d7b53c67900fd602656f8a29a6
+docs/SQA_CHECKLIST.md | SHA-256 | 2e3095a75729c1584ab51b2082fc1a35c95a43073cf9a104fbcfd5c5c3960766
+docs/api_payload_examples.json | SHA-256 | 8ae380c2bdea437c3a331b8a750b1e025c64f47703efcee78918f4787d82a2e1
+docs/verification_sources.md | SHA-256 | 9280743cfc5daa0c2f993fa2a2005c8738e18e60928a392eb41d37a6e950422b
+scripts/validate_specialty_mapping.py | SHA-256 | 5c64f7bda26c6747ca1bf4ffc9a31790a5880185ea20de419bcd8233557fe114
+tests/test_specialty_mapping.py | SHA-256 | 2dd51956eb5c7d998f09dde8646728e14782fe72946d5e86fd217d48880590f2

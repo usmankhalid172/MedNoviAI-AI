@@ -81,3 +81,17 @@ def test_spending_pattern_intelligence_route_returns_verified_summary(client, au
     assert "category_percentages" in payload
     assert "period_summary" in payload
     assert payload["period_summary"]["has_transactions"] is True
+
+
+def test_anomaly_route_returns_structured_anomaly_list(client, auth_headers):
+    resp = client.get(
+        "/api/v1/anomalies/U4637",
+        headers=auth_headers,
+    )
+
+    assert resp.status_code == 200
+    payload = resp.json()
+
+    assert payload["user_id"] == "U4637"
+    assert "anomalies" in payload
+    assert isinstance(payload["anomalies"], list)

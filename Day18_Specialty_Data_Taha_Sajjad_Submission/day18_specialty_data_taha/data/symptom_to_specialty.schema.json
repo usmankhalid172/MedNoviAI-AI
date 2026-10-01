@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MedNoviAI Symptom-to-Specialty Reference Mapping",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "canonical_specialties",
+    "normalization",
+    "symptom_to_specialty",
+    "emergency_overrides",
+    "routing_policy"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "canonical_specialties": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "normalization": {
+      "type": "object"
+    },
+    "symptom_to_specialty": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string",
+        "enum": [
+          "Cardiology",
+          "Dermatology",
+          "Neurology",
+          "Gastroenterology",
+          "Pulmonology",
+          "ENT",
+          "Ophthalmology",
+          "Orthopedics",
+          "Urology",
+          "Nephrology",
+          "Gynecology",
+          "Endocrinology",
+          "Psychiatry",
+          "General Practice",
+          "Pediatrics",
+          "Emergency"
+        ]
+      }
+    },
+    "emergency_overrides": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "const": "Emergency"
+      }
+    },
+    "routing_policy": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,66 @@
+{
+  "description": "Reference examples for the recommendation flow. Payload field names are examples for documentation only and must be aligned with the actual endpoint contract by the endpoint owner.",
+  "examples": [
+    {
+      "name": "dermatology_example",
+      "request": {
+        "symptoms": [
+          "skin rash",
+          "itchy skin"
+        ]
+      },
+      "expected_routing_reference": {
+        "specialty": "Dermatology"
+      }
+    },
+    {
+      "name": "cardiology_example",
+      "request": {
+        "symptoms": [
+          "chest tightness",
+          "palpitations"
+        ]
+      },
+      "expected_routing_reference": {
+        "specialty": "Cardiology",
+        "safety_priority": "check_emergency_patterns_first"
+      }
+    },
+    {
+      "name": "neurology_example",
+      "request": {
+        "symptoms": [
+          "migraine",
+          "numbness"
+        ]
+      },
+      "expected_routing_reference": {
+        "specialty": "Neurology"
+      }
+    },
+    {
+      "name": "urology_example",
+      "request": {
+        "symptoms": [
+          "painful urination",
+          "urinary frequency"
+        ]
+      },
+      "expected_routing_reference": {
+        "specialty": "Urology"
+      }
+    },
+    {
+      "name": "emergency_override_example",
+      "request": {
+        "symptoms": [
+          "severe breathing difficulty"
+        ]
+      },
+      "expected_routing_reference": {
+        "specialty": "Emergency",
+        "action": "urgent_emergency_guidance"
+      }
+    }
+  ]
+}
